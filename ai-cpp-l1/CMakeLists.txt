@@ -18,7 +18,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang"
         -march=native      # Enable all CPU-specific optimizations
         -funroll-loops     # Unroll loops for speed
         -fopenmp           # Enable OpenMP for multi-threading (if applicable)
-        -flto              # Link-time optimization
+        # -flto              # Link-time optimization
         -ffast-math        # Allow unsafe but faster math optimizations
     )
     target_link_options(${PROJECT_NAME} PRIVATE
