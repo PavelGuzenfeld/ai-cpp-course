@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Biuld files
+build/
+
+# Install directory
+install/
+
+# Logs
+log/
