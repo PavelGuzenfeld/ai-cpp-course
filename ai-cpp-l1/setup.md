@@ -7,7 +7,7 @@ Follow the steps below to set up a complete development environment with essenti
 ## **Step 1: Install Basic Dependencies**
 Install commonly required tools and libraries:
 ```bash
-sudo apt-get install -y software-properties-common build-essential libboost-all-dev cmake git python3 python3-pip wget libjsoncpp-dev autoconf autoconf-archive automake libtool gdb valgrind mold ccache
+sudo apt-get install -y software-properties-common build-essential libboost-all-dev cmake git python3 python3-pip wget libjsoncpp-dev autoconf autoconf-archive automake libtool gdb valgrind mold ccache pybind11-dev
 ```
 
 ---
@@ -15,7 +15,7 @@ sudo apt-get install -y software-properties-common build-essential libboost-all-
 ## **Step 2: Install Python Packages**
 Install necessary Python packages:
 ```bash
-pip3 install meson ninja numpy pyudev pybind11 colcon-core setuptools==58.2.0 empy==3.3.4
+pip3 install meson ninja numpy pyudev pybind11 colcon-core colcon-common-extensions setuptools==58.2.0 empy==3.3.4
 sudo rm -rf /root/.cache/pip
 ```
 
