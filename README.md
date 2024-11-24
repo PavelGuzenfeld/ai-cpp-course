@@ -11,3 +11,10 @@ CPP course intended for AI devs
 ```bash
     docker run -it -v $(pwd):/workspace ai-cpp-course
 ```
+
+## Building the lessons inside the container
+```bash
+    cd /workspace/
+    colcon build
+    source install/setup.bash
+```
