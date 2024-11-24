@@ -39,3 +39,6 @@ install/
 
 # Logs
 log/
+
+# Python
+__pycache__/
