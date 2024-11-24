@@ -16,7 +16,8 @@ RUN apt-get update && \
     libgstrtspserver-1.0-dev gdb valgrind mold ccache libopencv-dev pybind11-dev \
     && rm -rf var/lib/apt/lists/*
 
-RUN pip3 install meson ninja numpy pyudev termcolor scipy pyulog pymavlink asyncio pydantic pybind11 colcon-core colcon-common-extensions setuptools==58.2.0 empy==3.3.4 \
+RUN pip3 install meson ninja numpy opencv-python pyudev termcolor scipy pyulog pymavlink asyncio pydantic \
+    pybind11 colcon-core colcon-common-extensions setuptools==58.2.0 empy==3.3.4 \
     && rm -rf /root/.cache/pip
 
 RUN echo "alias ll='ls -l'" >> ~/.bashrc \
