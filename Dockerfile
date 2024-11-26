@@ -23,6 +23,109 @@ RUN pip3 install meson ninja numpy opencv-python pyudev termcolor scipy pyulog p
 RUN echo "alias ll='ls -l'" >> ~/.bashrc \
     && echo "alias lt='ls -ltr'" >> ~/.bashrc
 
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y \
+    && apt-get install -y g++-13 \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60 --slave /usr/bin/g++ g++ /usr/bin/g++-13 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 60
+
+RUN wget http://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.gz \
+    && tar -xf gcc-14.2.0.tar.gz \
+    && cd gcc-14.2.0 \
+    && ARCH=$(uname -m) \
+    && ./configure -v \
+    --build=${ARCH}-linux-gnu \
+    --host=${ARCH}-linux-gnu \
+    --target=${ARCH}-linux-gnu \
+    --prefix=/usr/ \
+    --enable-checking=release \
+    --enable-languages=c,c++ \
+    --disable-multilib \
+    --program-suffix=-14.2.0 \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -rf gcc-14.2.0 gcc-14.2.0.tar.gz
+
+RUN git clone https://github.com/rui314/mold.git \
+    && cd mold \
+    && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build -j$(nproc) \
+    && cmake --install build \
+    && cd .. \
+    && rm -rf mold
+
+RUN wget https://apt.llvm.org/llvm.sh \
+    && chmod u+x llvm.sh \
+    && ./llvm.sh 19 \
+    && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100 \
+    && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100 \
+    && rm llvm.sh
+
+# Install xsimd  - generic SIMD types and functions for C++
+RUN git clone https://github.com/xtensor-stack/xsimd \
+    && cd xsimd \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd ../.. \
+    && rm -rf xsimd
+
+# Install sml - C++14 State Machine Library
+RUN git clone https://github.com/boost-experimental/sml.git && \
+    mkdir sml/build && \
+    cd sml/build && \
+    cmake .. && \
+    make install && \
+    cd ../.. && \
+    rm -rf sml
+
+# Install concurrentqueue - A fast multi-producer, multi-consumer lock-free concurrent queue for C++
+RUN git clone https://github.com/cameron314/concurrentqueue && \
+    mkdir concurrentqueue/cmake_build && \
+    cd concurrentqueue/cmake_build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd ../.. && \
+    rm -rf concurrentqueue/
+
+# Install GSL - Microsoft's Guidelines Support Library
+RUN git clone https://github.com/microsoft/GSL.git \
+    && mkdir -p GSL/cmake_build \
+    && cd GSL/cmake_build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd ../.. \
+    && rm -rf GSL
+
+# Install Enoki - structured vectorization and differentiation on modern processor architectures
+RUN git clone --recurse-submodules https://github.com/mitsuba-renderer/enoki.git \
+    && cd enoki \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && cp -r ../include /usr/local/include/enoki \
+    && cd ../.. \
+    && rm -rf enoki
+
+# Install nanobind - Faster bind to Python for C++
+RUN git clone --recurse-submodules https://github.com/wjakob/nanobind.git \
+    && cd nanobind \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd ../.. \
+    && rm -rf nanobind
+
 WORKDIR /workspace
 
 CMD [ "bash" ]
