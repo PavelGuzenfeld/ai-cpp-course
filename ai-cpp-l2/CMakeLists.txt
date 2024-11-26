@@ -5,6 +5,8 @@ project(cpp_image_processor)
 find_package(Python3 COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(xsimd REQUIRED)
+
 
 
 # Find TBB for parallel execution
