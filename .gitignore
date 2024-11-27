@@ -42,3 +42,10 @@ log/
 
 # Python
 __pycache__/
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
