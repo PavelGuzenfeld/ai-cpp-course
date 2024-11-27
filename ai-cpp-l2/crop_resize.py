@@ -2,9 +2,6 @@ import numpy as np
 import cv2
 import time
 from cpp_image_processor import crop_and_resize
-from cpp_image_processor import crop_and_resize_unseq
-from cpp_image_processor import crop_and_resize_xsimd
-from cpp_image_processor import crop_and_resize_xsimd_inplace
 
 def crop_and_resize_python(image, crop_start, crop_dim, target_dim):
     """
@@ -23,7 +20,7 @@ def compare_functions():
     # Create a dummy image (2048x1365 RGB image)
     # image_height, image_width = 2048, 1365
     # image = np.random.randint(0, 256, (image_height, image_width, 3), dtype=np.uint8)
-    image_path = "ai-cpp-course/ai-cpp-l2/bmp-2048x1365.bmp"
+    image_path = "ai-cpp-l2/bmp-2048x1365.bmp"
     image = cv2.imread(image_path)
     if image is None:
         print("error: could not read the image.")
@@ -62,69 +59,50 @@ def compare_functions():
     cpp_time_ms = (cpp_end - cpp_start) * 1000  # Convert to milliseconds
     
     # write the output image
-    cv2.imwrite("cpp_result.bmp", cpp_result)
+    cv2.imwrite("cpp_result_scalar.bmp", cpp_result)
 
-    print(f"C++ crop_and_resize function took {cpp_time_ms:.2f} ms")
+    print(f"C++ crop_and_resize scaler function took {cpp_time_ms:.2f} ms")
 
     # Time the C++ function (unsequenced version)
     cpp_unseq_start = time.perf_counter()
-    cpp_unseq_result = crop_and_resize_unseq(
+    cpp_unseq_result = crop_and_resize(
         image,
         crop_start[0],
         crop_start[1],
         crop_dim[0],
         crop_dim[1],
         target_dim[0],
-        target_dim[1]
+        target_dim[1],
+        "unseq"
     )
     cpp_unseq_end = time.perf_counter()
     cpp_unseq_time_ms = (cpp_unseq_end - cpp_unseq_start) * 1000  # Convert to milliseconds
 
     # write the output image
-    cv2.imwrite("cpp_unseq_result.bmp", cpp_unseq_result)
+    cv2.imwrite("cpp_result_useq.bmp", cpp_unseq_result)
 
     print(f"C++ crop_and_resize_unseq function took {cpp_unseq_time_ms:.2f} ms")
 
 
     # Time the C++ function (xsimd version)
     cpp_xsimd_start = time.perf_counter()
-    cpp_xsimd_result = crop_and_resize_xsimd(
+    cpp_xsimd_result = crop_and_resize(
         image,
         crop_start[0],
         crop_start[1],
         crop_dim[0],
         crop_dim[1],
         target_dim[0],
-        target_dim[1]
+        target_dim[1],
+        "par"
     )
     cpp_xsimd_end = time.perf_counter()
     cpp_xsimd_time_ms = (cpp_xsimd_end - cpp_xsimd_start) * 1000  # Convert to milliseconds
 
     # write the output image
-    cv2.imwrite("cpp_xsimd_result.bmp", cpp_xsimd_result)
+    cv2.imwrite("cpp_result_par.bmp", cpp_xsimd_result)
 
-    print(f"C++ crop_and_resize_xsimd function took {cpp_xsimd_time_ms:.2f} ms")
-
-
-    # Time the C++ function (xsimd inplace version)
-    image_copy = image.copy()
-    cpp_xsimd_inplace_start = time.perf_counter()
-    crop_and_resize_xsimd_inplace(
-        image_copy,
-        crop_start[0],
-        crop_start[1],
-        crop_dim[0],
-        crop_dim[1],
-        target_dim[0],
-        target_dim[1]
-    )
-    cpp_xsimd_inplace_end = time.perf_counter()
-    cpp_xsimd_inplace_time_ms = (cpp_xsimd_inplace_end - cpp_xsimd_inplace_start) * 1000  # Convert to milliseconds
-
-    # write the output image
-    cv2.imwrite("cpp_xsimd_inplace_result.bmp", image_copy)
-
-    print(f"C++ crop_and_resize_xsimd_inplace function took {cpp_xsimd_inplace_time_ms:.2f} ms")
+    print(f"C++ crop_and_resize_par function took {cpp_xsimd_time_ms:.2f} ms")
 
 if __name__ == "__main__":
     compare_functions()
