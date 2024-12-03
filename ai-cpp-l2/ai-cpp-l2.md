@@ -23,3 +23,4 @@ Access to SSD - 10^6ns.
 Reading 1MB from RAM - 10^6ns.
 Sending 1MB over the network - 10^6ns.
 https://share.evernote.com/note/e903a4d9-9fa2-e33f-00df-84fd6ee0e18a
+https://gitlab.com/libeigen/eigen
