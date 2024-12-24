@@ -49,3 +49,6 @@ __pycache__/
 *.jpeg
 *.gif
 *.bmp
+
+#vscode
+.vscode/
