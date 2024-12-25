@@ -1,5 +1,10 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 project(portable_simd_sum_vectors)
+
+# Require C++23
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Find Python and Pybind11
 find_package(Python3 COMPONENTS Interpreter Development)
