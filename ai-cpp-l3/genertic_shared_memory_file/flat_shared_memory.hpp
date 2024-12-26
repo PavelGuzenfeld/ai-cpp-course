@@ -47,6 +47,11 @@ namespace flat_shm
             impl_.write(&data);
         }
 
+        inline FLAT_TYPE & write_ref() noexcept
+        {
+            return *static_cast<FLAT_TYPE *>(impl_.data_);
+        }
+
         inline FLAT_TYPE const &read() const noexcept
         {
             return *static_cast<FLAT_TYPE const *>(impl_.read());
