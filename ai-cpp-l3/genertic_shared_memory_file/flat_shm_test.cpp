@@ -234,6 +234,168 @@ int main()
         sem_unlink("/shm_read_sem");
     }
 
+    {
+        fmt::print("Test SharedMemory with large image between processes - lock-free style\n");
+
+        // 4K image (3 channels * 3840 x 2160)
+        constexpr auto SHARED_MEM_IMAGE_4K_SIZE = 3 * 3840 * 2160;
+        using ImageDataType = std::array<std::byte, SHARED_MEM_IMAGE_4K_SIZE>;
+
+        // We store one 'TimedImage' in shared memory
+        struct TimedImage
+        {
+            std::chrono::high_resolution_clock::time_point time_stamp;
+            ImageDataType pixels;
+        };
+
+        // Instead of a plain struct, store atomics directly for lock-free updates
+        struct Stats
+        {
+            // We’ll accumulate times in microseconds
+            std::atomic<long long> duration_accumulator_us{0};
+            std::atomic<size_t> read_count{0};
+        };
+
+        // Our combined shared memory region:
+        // - data_ready: child spins on this until the parent publishes
+        // - data_read : parent spins on this until the child finishes reading
+        // - image     : the data to transfer
+        // - stats     : accumulative stats (duration, count)
+        struct SharedRegion
+        {
+            std::atomic<bool> data_ready{false};
+            std::atomic<bool> data_read{false};
+            TimedImage image{};
+            Stats stats{};
+        };
+
+        // Create shared memory
+        auto shared_mem = SharedMemory<SharedRegion>::create("image_shm_test_lockfree");
+
+        // Prepare the large image data in the parent
+        auto large_data = std::make_unique<TimedImage>();
+        std::fill(large_data->pixels.begin(), large_data->pixels.end(), std::byte{0x42});
+
+        constexpr int N = 10; // number of subprocesses
+        std::vector<pid_t> child_pids;
+
+        // For each child, we:
+        // 1) Reset data_ready/data_read to false
+        // 2) Parent publishes the data (timestamp + image) => data_ready = true
+        // 3) Child waits on data_ready, reads + verifies, updates stats => data_read = true
+        // 4) Parent waits on data_read, goes on to next child
+        //
+        // This ensures no race conditions using only atomic flags.
+
+        for (int i = 0; i < N; ++i)
+        {
+            // Clear flags for this child’s iteration
+            {
+                auto &region = shared_mem->write_ref();
+                region.data_ready.store(false, std::memory_order_release);
+                region.data_read.store(false, std::memory_order_release);
+            }
+
+            pid_t pid = fork();
+            if (pid < 0)
+            {
+                fmt::print("Failed to fork subprocess {}\n", i);
+                continue;
+            }
+            else if (pid == 0)
+            {
+                // Child process: wait until parent sets data_ready = true
+                auto &region = shared_mem->write_ref(); // same as readRef but non-const
+
+                while (!region.data_ready.load(std::memory_order_acquire))
+                {
+                    sched_yield();
+                }
+
+                // Child verifies data
+                const auto &image = region.image;
+                for (std::size_t j = 0; j < SHARED_MEM_IMAGE_4K_SIZE; ++j)
+                {
+                    if (image.pixels[j] != std::byte{0x42})
+                    {
+                        fmt::print("Data mismatch in subprocess {} at index {}\n", i, j);
+                        _exit(EXIT_FAILURE);
+                    }
+                }
+
+                // Compute time
+                auto now = std::chrono::high_resolution_clock::now();
+                auto read_duration_us = std::chrono::duration_cast<std::chrono::microseconds>(now - image.time_stamp).count();
+
+                // Update stats atomically
+                region.stats.duration_accumulator_us.fetch_add(read_duration_us, std::memory_order_relaxed);
+                region.stats.read_count.fetch_add(1, std::memory_order_relaxed);
+
+                fmt::print("Subprocess {} completed successfully\n", i);
+
+                // Indicate to the parent that data is read
+                region.data_read.store(true, std::memory_order_release);
+
+                _exit(EXIT_SUCCESS);
+            }
+            else
+            {
+                // Parent process: publish data for the child
+                child_pids.push_back(pid);
+
+                // 1) Set the timestamp + copy the large data
+                {
+                    auto &region = shared_mem->write_ref();
+                    region.image.time_stamp = std::chrono::high_resolution_clock::now();
+                    region.image.pixels = large_data->pixels;
+                }
+
+                // 2) data_ready = true
+                {
+                    auto &region = shared_mem->write_ref();
+                    region.data_ready.store(true, std::memory_order_release);
+                }
+
+                // 3) Wait until the child sets data_read = true
+                {
+                    auto &region = shared_mem->write_ref();
+                    while (!region.data_read.load(std::memory_order_acquire))
+                    {
+                        sched_yield();
+                    }
+                }
+            }
+        }
+
+        // Wait for all children to complete
+        for (auto pid : child_pids)
+        {
+            int status;
+            waitpid(pid, &status, 0);
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+            {
+                fmt::print("Subprocess failed with PID {}\n", pid);
+            }
+        }
+
+        // Print average duration if we had successful reads
+        {
+            const auto &region = shared_mem->read();
+            auto read_count = region.stats.read_count.load(std::memory_order_relaxed);
+            if (read_count > 0)
+            {
+                auto duration_acc = region.stats.duration_accumulator_us.load(std::memory_order_relaxed);
+                auto average_us = duration_acc / read_count;
+                fmt::print("Average transfer duration: {} us\n", average_us);
+                fmt::print("Average transfer duration: {} ms\n", average_us / 1000.0);
+            }
+            else
+            {
+                fmt::print("No successful reads.\n");
+            }
+        }
+    }
+
     fmt::print("All tests passed\n");
     return 0;
 }
