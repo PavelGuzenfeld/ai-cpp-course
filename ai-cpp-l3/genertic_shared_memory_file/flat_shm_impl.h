@@ -18,12 +18,12 @@ namespace flat_shm_impl
         void* data_;
         std::size_t size_;
 
-        inline void write(void const *data) noexcept
+        inline void const* read() const noexcept
         {
-            std::memcpy(data_, data, size_);
+            return data_;
         }
 
-        inline void const* read() const noexcept
+        inline void* write_ref() noexcept
         {
             return data_;
         }

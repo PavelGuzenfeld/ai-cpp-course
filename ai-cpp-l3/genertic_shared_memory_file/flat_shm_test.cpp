@@ -17,7 +17,7 @@ int main()
     {
         fmt::print("Test SharedMemory with int\n");
         auto shared_memory = SharedMemory<int>::create("int_file_name");
-        shared_memory->write(42);
+        shared_memory->write_ref() = 42;
         auto read_int = shared_memory->read();
         assert(read_int == 42 && "Failed to read int");
     }
@@ -25,7 +25,7 @@ int main()
     {
         fmt::print("Test SharedMemory with double\n");
         auto shared_memory = SharedMemory<double>::create("double_file_name");
-        shared_memory->write(42.42);
+        shared_memory->write_ref() = 42.42;
         auto read_double = shared_memory->read();
         assert(read_double == 42.42 && "Failed to read double");
     }
@@ -33,7 +33,7 @@ int main()
     {
         fmt::print("Test SharedMemory with char\n");
         auto shared_memory = SharedMemory<char>::create("char_file_name");
-        shared_memory->write('c');
+        shared_memory->write_ref() = 'c';
         auto read_char = shared_memory->read();
         assert(read_char == 'c' && "Failed to read char");
     }
@@ -47,7 +47,7 @@ int main()
             char buffer[50]; // Correct declaration of a fixed-size array
         };
         auto shared_memory = SharedMemory<FlatStruct>::create("struct_file_name");
-        shared_memory->write({42, 42.42, "Hello, shared memory!"});
+        shared_memory->write_ref() = {42, 42.42, "Hello, shared memory!"};
         auto read_struct = shared_memory->read();
         assert(read_struct.a == 42 && "Failed to read struct.a");
         assert(read_struct.b == 42.42 && "Failed to read struct.b");
@@ -72,7 +72,7 @@ int main()
         };
 
         auto shared_memory = SharedMemory<NestedFlatStruct>::create("nested_struct_file_name");
-        shared_memory->write({{42, 42.42, "Hello, shared memory!"}, 42});
+        shared_memory->write_ref() = {{42, 42.42, "Hello, shared memory!"}, 42};
         auto read_struct = shared_memory->read();
         assert(read_struct.inner.a == 42 && "Failed to read nested struct.inner.a");
         assert(read_struct.inner.b == 42.42 && "Failed to read nested struct.inner.b");
@@ -86,7 +86,10 @@ int main()
         fmt::print("Test SharedMemory with array\n");
         auto shared_memory = SharedMemory<int[10]>::create("array_file_name");
         int data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-        shared_memory->write(data);
+        for (int i = 0; i < 10; i++)
+        {
+            shared_memory->write_ref()[i] = data[i];
+        }
         auto read_data = shared_memory->read();
         for (int i = 0; i < 10; i++)
         {
@@ -99,7 +102,7 @@ int main()
     {
         fmt::print("Move constructor test\n");
         auto shared_memory = SharedMemory<int>::create("move_constructor_file_name");
-        shared_memory->write(42);
+        shared_memory->write_ref() = 42;
         auto shared_memory2 = std::move(shared_memory);
         auto read_int = shared_memory2->read();
         assert(read_int == 42 && "Failed to read int after move constructor");
@@ -108,7 +111,7 @@ int main()
     {
         fmt::print("Move assignment test\n");
         auto shared_memory = SharedMemory<int>::create("move_assignment_file_name");
-        shared_memory->write(42);
+        shared_memory->write_ref() = 42;
         auto shared_memory2 = SharedMemory<int>::create("move_assignment_file_name2");
         shared_memory2 = std::move(shared_memory);
         auto read_int = shared_memory2->read();
@@ -182,10 +185,8 @@ int main()
                 auto const now = std::chrono::high_resolution_clock::now();
                 auto const read_duration = std::chrono::duration_cast<std::chrono::microseconds>(now - read_data.time_stamp).count();
 
-                auto const stats = Stats{.duration_accumulator = std::chrono::microseconds{read_duration + read_stats.duration_accumulator.count()},
-                                         .read_count = read_stats.read_count + 1};
-
-                shared_stats->write(stats);
+                shared_stats->write_ref() = {.duration_accumulator = std::chrono::microseconds{read_duration + read_stats.duration_accumulator.count()},
+                                             .read_count = read_stats.read_count + 1};
 
                 fmt::print("Subprocess {} completed successfully\n", i);
                 sem_post(sem_write); // Signal parent
@@ -197,7 +198,7 @@ int main()
                 sem_wait(sem_write); // Wait for previous child to read
 
                 large_data->time_stamp = std::chrono::high_resolution_clock::now();
-                shared_memory->write(*large_data);
+                shared_memory->write_ref() = *large_data;
 
                 sem_post(sem_read); // Signal child
                 child_pids.push_back(pid);

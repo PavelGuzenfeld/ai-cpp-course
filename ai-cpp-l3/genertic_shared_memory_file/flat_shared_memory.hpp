@@ -42,14 +42,9 @@ namespace flat_shm
             flat_shm_impl::destroy(impl_);
         }
 
-        inline void write(FLAT_TYPE const& data) noexcept
-        {
-            impl_.write(&data);
-        }
-
         inline FLAT_TYPE & write_ref() noexcept
         {
-            return *static_cast<FLAT_TYPE *>(impl_.data_);
+            return *static_cast<FLAT_TYPE *>(impl_.write_ref());
         }
 
         inline FLAT_TYPE const &read() const noexcept
