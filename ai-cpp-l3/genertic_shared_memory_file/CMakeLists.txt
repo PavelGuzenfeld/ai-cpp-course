@@ -17,6 +17,7 @@ function(set_common_options target)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(${target} PRIVATE
             -O3                # Max optimization
+            -g3                # Debugging information
             -march=native      # Enable all CPU-specific optimizations
             -funroll-loops     # Unroll loops for speed
             -fopenmp           # Enable OpenMP for multi-threading (if applicable)
