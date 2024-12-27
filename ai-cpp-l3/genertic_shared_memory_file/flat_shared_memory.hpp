@@ -44,12 +44,12 @@ namespace flat_shm
 
         inline FLAT_TYPE & write_ref() noexcept
         {
-            return *static_cast<FLAT_TYPE *>(impl_.write_ref());
+            return *static_cast<FLAT_TYPE *>(impl_.write_ref_unsafe());
         }
 
         inline FLAT_TYPE const &read() const noexcept
         {
-            return *static_cast<FLAT_TYPE const *>(impl_.read());
+            return *static_cast<FLAT_TYPE const *>(impl_.read_unsafe());
         }
 
         inline auto size() const noexcept
