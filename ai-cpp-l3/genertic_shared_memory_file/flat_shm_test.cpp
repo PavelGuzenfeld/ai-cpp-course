@@ -72,8 +72,11 @@ int main()
         };
 
         auto shared_memory = SharedMemory<NestedFlatStruct>::create("nested_struct_file_name");
+        auto start = std::chrono::high_resolution_clock::now();
         shared_memory->write_ref() = {{42, 42.42, "Hello, shared memory!"}, 42};
         auto read_struct = shared_memory->read();
+        auto end = std::chrono::high_resolution_clock::now();
+        fmt::print("Time to write and read nested struct: {} us\n", std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
         assert(read_struct.inner.a == 42 && "Failed to read nested struct.inner.a");
         assert(read_struct.inner.b == 42.42 && "Failed to read nested struct.inner.b");
         assert(std::string(read_struct.inner.buffer) == "Hello, shared memory!" && "Failed to read nested struct.inner.buffer");
