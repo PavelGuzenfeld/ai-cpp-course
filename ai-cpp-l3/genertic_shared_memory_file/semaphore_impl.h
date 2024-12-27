@@ -11,7 +11,7 @@ namespace flat_shm_impl
     {
         static std::expected<Semaphore, std::string> create(std::string const &name, int initial_value = 0)
         {
-            auto sem = sem_open(name.c_str(), O_CREAT, 0644, initial_value);
+            auto sem = sem_open(name.c_str(), O_CREAT | O_EXCL, 0644, initial_value);
             if (sem == SEM_FAILED)
             {
                 return std::unexpected(fmt::format("sem_open failed: {} for semaphore: {}", strerror(errno), name));
