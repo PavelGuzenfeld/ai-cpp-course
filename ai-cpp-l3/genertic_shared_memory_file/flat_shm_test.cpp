@@ -1,14 +1,12 @@
 #include "flat_shared_memory.hpp"
+#include "flat_shm_impl.h"
 #include <assert.h>
+#include <atomic>
 #include <chrono>
 #include <fcntl.h>
 #include <semaphore.h>
-
-#include "flat_shm_impl.h"
 #include <sys/wait.h>
 #include <vector>
-
-#include <atomic>
 
 int main()
 {
