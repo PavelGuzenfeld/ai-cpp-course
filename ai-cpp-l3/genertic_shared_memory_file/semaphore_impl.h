@@ -11,7 +11,7 @@ namespace flat_shm_impl
     {
         static std::expected<Semaphore, std::string> create(std::string const &name, int initial_value = 0)
         {
-            auto sem = sem_open(name.c_str(), O_CREAT | O_EXCL, 0644, initial_value);
+            sem_t *sem = sem_open(name.c_str(), O_CREAT | O_EXCL, 0644, initial_value);
             if (sem == SEM_FAILED)
             {
                 return std::unexpected(fmt::format("sem_open failed: {} for semaphore: {}", strerror(errno), name));
@@ -57,7 +57,7 @@ namespace flat_shm_impl
     {
     public:
         // Acquire the semaphore upon construction
-        explicit Guard(Semaphore  &semaphore)
+        explicit Guard(Semaphore &semaphore)
             : sem_(semaphore), locked_(false)
         {
             if (sem_)
@@ -88,7 +88,7 @@ namespace flat_shm_impl
         bool isLocked() const { return locked_; }
 
     private:
-        Semaphore & sem_;
+        Semaphore &sem_;
         bool locked_;
 
         void unlockIfNeeded()
