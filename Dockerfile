@@ -120,11 +120,17 @@ RUN git clone --recurse-submodules https://github.com/wjakob/nanobind.git \
     && cd nanobind \
     && mkdir build \
     && cd build \
-    && cmake .. \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. \
     && make -j$(nproc) \
     && make install \
     && cd ../.. \
-    && rm -rf nanobind
+    && rm -rf nanobind \
+    && ln -s /usr/local/nanobind/cmake /usr/local/lib/cmake/nanobind \
+    && ln -s /usr/local/nanobind/include/nanobind /usr/local/include/nanobind 
+
+
+
+
 
 WORKDIR /workspace
 
