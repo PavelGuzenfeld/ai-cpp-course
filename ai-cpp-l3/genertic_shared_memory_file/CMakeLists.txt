@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 project(flat_shared_memory)
 
 # Require C++23
@@ -6,11 +6,11 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
+# Find dependencies
 find_package(fmt REQUIRED)
-# Find Python and Pybind11
 find_package(Python3 COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED)
+
 
 # Function to apply common compile and link options
 function(set_common_options target)
@@ -37,21 +37,37 @@ function(set_common_options target)
     endif()
 endfunction()
 
-# # Add the library
-# add_library(${PROJECT_NAME} MODULE ${PROJECT_NAME}.cpp)
+# Add the Python module using nanobind
+add_library(Share_memory_image_producer_consumer MODULE
+    flat_shm_img_producer_consumer_py.cpp # Source file for Python bindings
+    flat_shm_producer_consumer.hpp
+    image.hpp
+)
 
-# # Link libraries
-# target_link_libraries(${PROJECT_NAME} PRIVATE pybind11::module)
+# Link dependencies
+target_link_libraries(Share_memory_image_producer_consumer PRIVATE pybind11::module fmt)
 
-# # Set properties for Python module
-# set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".so")
+# Apply common options to the module
+set_common_options(Share_memory_image_producer_consumer)
 
-# # Install python library
-# install(TARGETS ${PROJECT_NAME}
-#     DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
-# )
+# Set properties for the Python module
+set_target_properties(Share_memory_image_producer_consumer PROPERTIES PREFIX "" SUFFIX ".so")
 
+install(TARGETS Share_memory_image_producer_consumer DESTINATION lib)
+
+# Install the Python module to site-packages
+install(TARGETS Share_memory_image_producer_consumer
+    DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
+)
+
+# Add the test executable
 add_executable(flat_shm_test flat_shm_test.cpp)
-set_common_options(flat_shm_test)
+
+# Link dependencies for the test executable
 target_link_libraries(flat_shm_test PRIVATE fmt)
+
+# Apply common options to the test executable
+set_common_options(flat_shm_test)
+
+# Install the test executable
 install(TARGETS flat_shm_test DESTINATION bin)
