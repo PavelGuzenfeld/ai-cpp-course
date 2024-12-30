@@ -1,3 +1,4 @@
+#pragma once
 #include <type_traits>
 
 // Helper: Check if a type is a flat type (trivially copyable and standard layout)
