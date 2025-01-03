@@ -1,5 +1,6 @@
 #include "flat_shared_memory.hpp"
 #include "flat_shm_impl.h"
+#include "flat_shm_producer_consumer.hpp"
 #include <assert.h>
 #include <atomic>
 #include <chrono>
@@ -7,7 +8,6 @@
 #include <semaphore.h>
 #include <sys/wait.h>
 #include <vector>
-
 int main()
 {
     using namespace flat_shm;
@@ -396,8 +396,17 @@ int main()
                 fmt::print("No successful reads.\n");
             }
         }
-    }
 
+        {
+            // Producer-consumer move constructor test
+            fmt::print("Producer-consumer move constructor test\n");
+            auto producer_consumer = FlatShmProducerConsumer<int>::create("producer_consumer_move_constructor_file_name");
+            producer_consumer->produce(42);
+            auto producer_consumer2 = std::move(producer_consumer);
+            auto read_int = producer_consumer2->consume();
+            assert(read_int == 42 && "Failed to read int after producer-consumer move constructor");
+        }
+    }
     fmt::print("All tests passed\n");
     return 0;
 }

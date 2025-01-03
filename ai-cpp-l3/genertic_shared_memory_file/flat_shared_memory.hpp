@@ -1,3 +1,4 @@
+#pragma once
 #include "flat_shm_impl.h"
 #include "flat_type.hpp"
 
@@ -5,14 +6,14 @@ namespace flat_shm
 {
     template <FlatType FLAT_TYPE>
     struct SharedMemory
-    {   
+    {
         static constexpr std::expected<SharedMemory<FLAT_TYPE>, std::string> create(std::string const &shm_name) noexcept
         {
             auto const size = sizeof(FLAT_TYPE);
-            auto const impl = flat_shm_impl::make(shm_name, size);
+            auto impl = std::move(flat_shm_impl::create(shm_name, size));
             if (impl.has_value())
             {
-                return SharedMemory<FLAT_TYPE>{impl.value()};
+                return SharedMemory<FLAT_TYPE>{std::move(impl.value())};
             }
             return std::unexpected(impl.error());
         }
@@ -23,7 +24,6 @@ namespace flat_shm
         SharedMemory(SharedMemory &&other) noexcept
             : impl_(std::move(other.impl_))
         {
-            other.impl_ = flat_shm_impl::shm{};
         }
 
         SharedMemory &operator=(SharedMemory &&other) noexcept
@@ -32,7 +32,6 @@ namespace flat_shm
             {
                 flat_shm_impl::destroy(impl_);
                 impl_ = std::move(other.impl_);
-                other.impl_ = flat_shm_impl::shm{};
             }
             return *this;
         }
@@ -42,14 +41,14 @@ namespace flat_shm
             flat_shm_impl::destroy(impl_);
         }
 
-        inline FLAT_TYPE & write_ref() noexcept
+        inline FLAT_TYPE &write_ref() noexcept
         {
-            return *static_cast<FLAT_TYPE *>(impl_.write_ref_unsafe());
+            return *static_cast<FLAT_TYPE *>(flat_shm_impl::write_ref_unsafe(impl_));
         }
 
         inline FLAT_TYPE const &read() const noexcept
         {
-            return *static_cast<FLAT_TYPE const *>(impl_.read_unsafe());
+            return *static_cast<FLAT_TYPE const *>(flat_shm_impl::read_unsafe(impl_));
         }
 
         inline auto size() const noexcept
@@ -65,8 +64,9 @@ namespace flat_shm
     private:
         flat_shm_impl::shm impl_;
 
-        constexpr SharedMemory(flat_shm_impl::shm impl) noexcept
-            : impl_{impl}
+
+        SharedMemory(flat_shm_impl::shm &&impl) noexcept
+            : impl_(std::move(impl))
         {
         }
     };

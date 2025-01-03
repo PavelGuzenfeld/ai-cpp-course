@@ -9,50 +9,56 @@ namespace flat_shm_impl
 {
     struct Semaphore
     {
-        static std::expected<Semaphore, std::string> create(std::string const &name, int initial_value = 0)
+        std::string sem_name_;
+        sem_t *sem_ = nullptr;
+    };
+
+    inline std::expected<Semaphore, std::string> create(std::string const &name, int initial_value = 0)
+    {
+        sem_t *sem = sem_open(name.c_str(), O_CREAT | O_EXCL, 0644, initial_value);
+        if (sem == SEM_FAILED)
         {
-            sem_t *sem = sem_open(name.c_str(), O_CREAT | O_EXCL, 0644, initial_value);
-            if (sem == SEM_FAILED)
+            if (errno == EEXIST)
+            {
+                sem = sem_open(name.c_str(), O_RDWR, 0644, initial_value);
+                if (sem == SEM_FAILED)
+                {
+                    return std::unexpected(fmt::format("sem_open failed: {} for semaphore: {}", strerror(errno), name));
+                }
+            }
+            else
             {
                 return std::unexpected(fmt::format("sem_open failed: {} for semaphore: {}", strerror(errno), name));
             }
-            return Semaphore{sem, name};
         }
+        return Semaphore{name, sem};
+    }
 
-        [[nodiscard]] inline explicit operator bool() const noexcept
+    inline bool is_valid(Semaphore const &sem)
+    {
+        return sem.sem_ != nullptr;
+    }
+
+    inline bool wait(Semaphore &sem)
+    {
+        return sem_wait(sem.sem_) == 0;
+    }
+
+    inline void post(Semaphore &sem)
+    {
+        sem_post(sem.sem_);
+    }
+
+    void destroy(Semaphore &sem)
+    {
+        if (sem.sem_)
         {
-            return sem_ != nullptr;
+            post(sem);
+            sem_close(sem.sem_);
+            sem_unlink(sem.sem_name_.c_str());
+            sem.sem_ = nullptr;
         }
-
-        inline bool wait() const noexcept
-        {
-            return sem_wait(sem_);
-        }
-
-        inline void post() const noexcept
-        {
-            sem_post(sem_);
-        }
-
-        ~Semaphore() noexcept
-        {
-            if (sem_)
-            {
-                sem_close(sem_);
-                sem_unlink(sem_name_.c_str());
-                sem_ = nullptr;
-            }
-        }
-
-    private:
-        Semaphore(sem_t *sem, std::string const &name)
-            : sem_(sem), sem_name_(name)
-        {
-        }
-        sem_t *sem_ = nullptr;
-        std::string sem_name_;
-    };
-
+    }
     class Guard
     {
     public:
@@ -60,9 +66,9 @@ namespace flat_shm_impl
         explicit Guard(Semaphore &semaphore)
             : sem_(semaphore), locked_(false)
         {
-            if (sem_)
+            if (is_valid(sem_))
             {
-                if (sem_.wait() == 0)
+                if (wait(sem_))
                 {
                     locked_ = true;
                 }
@@ -90,12 +96,13 @@ namespace flat_shm_impl
     private:
         Semaphore &sem_;
         bool locked_;
+        unsigned int count_;
 
         void unlockIfNeeded()
         {
             if (locked_)
             {
-                sem_.post();
+                post(sem_);
                 locked_ = false;
             }
         }
