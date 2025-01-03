@@ -87,3 +87,13 @@ enable_sanitizers(flat_shm_test)
 
 # Install the test executable
 install(TARGETS flat_shm_test DESTINATION bin)
+
+
+add_executable(exception_test exception.cpp)
+target_link_libraries(exception_test PRIVATE fmt)
+set_common_options(exception_test)
+enable_sanitizers(exception_test)
+
+# Install the test executable
+install(TARGETS exception_test DESTINATION bin)
+
