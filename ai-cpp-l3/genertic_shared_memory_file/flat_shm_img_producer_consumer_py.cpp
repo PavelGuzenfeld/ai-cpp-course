@@ -91,13 +91,13 @@ PYBIND11_MODULE(Share_memory_image_producer_consumer, m)
     py::class_<ProducerConsumer>(m, "ProducerConsumer")
         .def(py::init(&create),py::return_value_policy::move)
         .def("close", &destroy)
-        .def("store", [](ProducerConsumer &self, const img::Image4K_RGB &image)
+        .def("store", [](ProducerConsumer &self, img::Image4K_RGB const& image)
              {
     if (!self.image_) {
         throw std::runtime_error("Image pointer is null.");
     }
     flat_shm_impl::wait(self.sem_write_);
-    *self.image_ = image; 
+    std::memcpy(self.shm_.data_, &image, sizeof(img::Image4K_RGB));
     flat_shm_impl::post(self.sem_read_);
     })
         .def("load", [](ProducerConsumer &self) -> std::shared_ptr<img::Image4K_RGB>
