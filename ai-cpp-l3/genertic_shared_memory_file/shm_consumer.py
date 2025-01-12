@@ -1,4 +1,5 @@
 import Share_memory_image_producer_consumer as shm
+from time import perf_counter_ns as perf_counter
 
 # Consumer
 def consumer_example():
@@ -7,12 +8,14 @@ def consumer_example():
     consumer = shm.ProducerConsumer(shm_name)
     
     # Consume the image
-    retrieved_image = consumer.load()
-    print("Retrieved image from shared memory")
-    
-    # Convert the retrieved Image4K_RGB object to a numpy array
-    # retrieved_data = retrieved_image.get_data()
-    # print(f"Retrieved image shape: {retrieved_data.shape}")
+    for _ in range(10):
+        retrieved_image = consumer.load()
+        timestamp = retrieved_image.timestamp
+        now = int(perf_counter())
+        print("Image timestamp:", timestamp)
+        print("Now timestamp:", now)
+        print("Time elapsed:", (now - timestamp), "ns")
+        print("Time elapsed ms:", (now - timestamp) / 1e6, "ms")
     consumer.close()
 
 # Main
