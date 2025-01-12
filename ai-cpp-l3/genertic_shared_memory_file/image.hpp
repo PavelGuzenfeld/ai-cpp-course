@@ -40,6 +40,7 @@ namespace img
         static constexpr std::size_t size = WIDTH * HEIGHT * channels(TYPE);
 
         uint64_t timestamp;
+        uint64_t frame_number;
         std::array<std::uint8_t, size> data; // Array to hold image data
     };
 #pragma pack(pop)
@@ -53,11 +54,11 @@ namespace img
     using Image4K_NV12 = Image<3840, 2160, ImageType::NV12>;
 
     // Static assertions to verify sizes
-    static_assert(sizeof(ImageFHD_RGB) == (1920 * 1080 * 3 + sizeof(uint64_t)));
-    static_assert(sizeof(ImageFHD_RGBA) == (1920 * 1080 * 4 + sizeof(uint64_t)));
-    static_assert(sizeof(ImageFHD_NV12) == (1920 * 1080 * 1.5 + sizeof(uint64_t)));
-    static_assert(sizeof(Image4K_RGB) == (3840 * 2160 * 3 + sizeof(uint64_t)));
-    static_assert(sizeof(Image4K_RGBA) == (3840 * 2160 * 4 + sizeof(uint64_t)));
-    static_assert(sizeof(Image4K_NV12) == (3840 * 2160 * 1.5 + sizeof(uint64_t)));
+    static_assert(sizeof(ImageFHD_RGB) == (1920 * 1080 * 3 + 2 * sizeof(uint64_t)));
+    static_assert(sizeof(ImageFHD_RGBA) == (1920 * 1080 * 4 + 2 * sizeof(uint64_t)));
+    static_assert(sizeof(ImageFHD_NV12) == (1920 * 1080 * 1.5 + 2 * sizeof(uint64_t)));
+    static_assert(sizeof(Image4K_RGB) == (3840 * 2160 * 3 + 2 * sizeof(uint64_t)));
+    static_assert(sizeof(Image4K_RGBA) == (3840 * 2160 * 4 + 2 * sizeof(uint64_t)));
+    static_assert(sizeof(Image4K_NV12) == (3840 * 2160 * 1.5 + 2 * sizeof(uint64_t)));
 
 } // namespace img
