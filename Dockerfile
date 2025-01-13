@@ -120,7 +120,7 @@ RUN git clone --recurse-submodules https://github.com/wjakob/nanobind.git \
     && cd nanobind \
     && mkdir build \
     && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DNB_CREATE_INSTALL_RULES=ON -DCMAKE_INSTALL_PREFIX=/usr/local .. \
     && make -j$(nproc) \
     && make install \
     && cd ../.. \
@@ -128,8 +128,7 @@ RUN git clone --recurse-submodules https://github.com/wjakob/nanobind.git \
     && ln -s /usr/local/nanobind/cmake /usr/local/lib/cmake/nanobind \
     && ln -s /usr/local/nanobind/include/nanobind /usr/local/include/nanobind 
 
-
-
+RUN pip3 install nanobind
 
 
 WORKDIR /workspace
