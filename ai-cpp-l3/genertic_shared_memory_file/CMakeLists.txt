@@ -10,6 +10,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(fmt REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED)
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
+find_package(nanobind CONFIG REQUIRED HINTS /usr/local/nanobind/cmake)
+
+# Fallback: Manually add the target if not found
+if (NOT TARGET nanobind::nanobind)
+    add_library(nanobind::nanobind INTERFACE IMPORTED)
+    set_target_properties(nanobind::nanobind PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/nanobind/include"
+    )
+endif()
+
+file(GLOB NANOBIND_SOURCES /usr/local/nanobind/src/*.cpp)
+
+
 
 # Add an option to enable sanitizers
 option(ENABLE_SANITIZERS "Enable Address/Undefined Behavior sanitizers" OFF)
@@ -97,3 +111,16 @@ enable_sanitizers(exception_test)
 # Install the test executable
 install(TARGETS exception_test DESTINATION bin)
 
+# Your module
+include_directories(/usr/local/nanobind/ext/robin_map/include)
+set(NANOBIND_SRC /usr/local/nanobind/src/nb_combined.cpp)
+add_library(my_module MODULE nanobind_example.cpp ${NANOBIND_SRC})
+target_link_libraries(my_module PRIVATE nanobind::nanobind Python3::Python)
+
+# Set target properties
+set_target_properties(my_module PROPERTIES PREFIX "" SUFFIX ".so")
+
+# Install the Python module
+install(TARGETS my_module
+    DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
+)
