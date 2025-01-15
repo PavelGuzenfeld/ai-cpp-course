@@ -1,4 +1,6 @@
 import Share_memory_image_producer_consumer as shm
+import Share_memory_image_producer_consumer_nb as shm_nb
+
 import numpy as np
 from time import perf_counter_ns as perf_counter
 import time
@@ -15,6 +17,19 @@ retrieved_data = image.get_data()
 print(f"Retrieved data shape: {retrieved_data.shape}")
 print(f"Retrieved data[0, 0]: {retrieved_data[0, 0]}")
 print(f"Retrieved timestamp: {image.timestamp}")
+
+#Create an image Image4K_RGB_NB object
+image_nb = shm_nb.Image4K_RGB()
+
+# Set data to 42
+image_nb.set_data(np.ones((2160, 3840, 3), dtype=np.uint8) * 42)
+image_nb.timestamp = 1234567890
+
+# Retrieve data
+retrieved_data = image_nb.get_data()
+print(f"Retrieved data shape: {image_nb.shape}")
+print(f"Retrieved data[0, 0]: {retrieved_data[0, 0]}")
+print(f"Retrieved timestamp: {image_nb.timestamp}")
 
 # Producer
 def producer_example(repeat=10) -> list:
@@ -49,11 +64,31 @@ def atomic_producer_example(repeat=10) -> list:
     producer.close()
     return result
 
+
+def producer_example_nb(repeat=10) -> list:
+    # Create a producer instance
+    shm_name = "shared_memory_4k_rgb_nb"
+    producer = shm_nb.ProducerConsumer.create(shm_name)
+    print("ProducerConsumer created:", producer)  # ensure this is a valid object
+
+    result = []
+    for frame_id in range(repeat):
+        image_nb.timestamp = int(perf_counter())
+        image_nb.frame_number = frame_id
+        producer.store(image_nb)
+        result.append((int(perf_counter()) - image_nb.timestamp) / 1e6)
+    producer.close()
+    return result
+
+
+
+
 # Main
 if __name__ == "__main__":
     REPEAT = 100
     prod_result = producer_example(REPEAT)
     atomic_result = atomic_producer_example(REPEAT)
+    prod_result_nb = producer_example_nb(REPEAT)
 
     #Post processing statistics
     print("Producer elapsed time:", prod_result)
@@ -66,3 +101,7 @@ if __name__ == "__main__":
     print("Producer std:", np.std(prod_result))
     print("Atomic Producer std:", np.std(atomic_result))
     print("Atomic Producer is faster by percentage:", (np.mean(prod_result) - np.mean(atomic_result)) / np.mean(prod_result) * 100, "%")
+    print("Producer Consumer NB elapsed time:", prod_result_nb)
+    print("Producer Consumer NB mean:", np.mean(prod_result_nb))
+    print("Producer Consumer NB std:", np.std(prod_result_nb))
+    print("Producer Consumer NB is faster by percentage:", (np.mean(prod_result) - np.mean(prod_result_nb)) / np.mean(prod_result) * 100, "%")

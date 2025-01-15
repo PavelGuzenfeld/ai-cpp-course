@@ -124,3 +124,27 @@ set_target_properties(my_module PROPERTIES PREFIX "" SUFFIX ".so")
 install(TARGETS my_module
     DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
 )
+
+# -----------------------
+
+# Add the Python module
+add_library(Share_memory_image_producer_consumer_nb MODULE
+    flat_shm_img_producer_consumer_nb.cpp
+    flat_shm_producer_consumer.hpp
+    image.hpp
+    ${NANOBIND_SRC}
+)
+
+# Set target properties
+set_target_properties(Share_memory_image_producer_consumer_nb PROPERTIES PREFIX "" SUFFIX ".so")
+
+# Link dependencies and enable sanitizers
+target_link_libraries(Share_memory_image_producer_consumer_nb PRIVATE nanobind::nanobind Python3::Python fmt)
+set_common_options(Share_memory_image_producer_consumer_nb)
+if (ENABLE_SANITIZERS)
+    enable_sanitizers(Share_memory_image_producer_consumer_nb)
+endif()
+
+# Install the Python module
+install(TARGETS Share_memory_image_producer_consumer_nb
+    DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)

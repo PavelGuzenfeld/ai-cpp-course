@@ -1,6 +1,9 @@
 import Share_memory_image_producer_consumer as shm
+import Share_memory_image_producer_consumer_nb as shm_nb
+
 from time import perf_counter_ns as perf_counter, sleep
 import numpy as np
+
 
 # Consumer
 def consumer_example(repeat=10) -> list:
