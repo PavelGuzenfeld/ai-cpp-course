@@ -8,6 +8,7 @@ RUN apt-get update && \
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
     dpkg-reconfigure -f noninteractive tzdata && \
     apt-get install -y \
+    libfmt-dev \
     libmpfr-dev libgmp3-dev libmpc-dev git-lfs net-tools software-properties-common build-essential libtbb-dev \
     libboost-all-dev cmake git python3 python3-pip wget libjsoncpp-dev libgstreamer-plugins-base1.0-dev \
     libgstreamer1.0-dev python-is-python3 autoconf autoconf-archive automake libtool python3-dev python3-dbg \
