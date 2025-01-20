@@ -1,5 +1,5 @@
-#include <atomic>
-#include <thread>
+#include <atomic> // std::atomic
+#include <thread> // std::this_thread::yield
 
 constexpr std::size_t CACHE_LINE_SIZE = 64;
 
@@ -16,7 +16,7 @@ public:
         : data_(std::move(initial_data)), state_(0), writer_waiting_(false) {}
 
     // Reader function
-    [[nodiscard]] T const *read()
+    [[nodiscard]] T const *read() noexcept
     {
         while (true)
         {
@@ -38,7 +38,7 @@ public:
     }
 
     // Writer function
-    void write(T const &new_data)
+    void write(T const &new_data) noexcept
     {
         writer_waiting_.store(true, std::memory_order_release);
 
