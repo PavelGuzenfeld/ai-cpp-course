@@ -148,3 +148,15 @@ endif()
 # Install the Python module
 install(TARGETS Share_memory_image_producer_consumer_nb
     DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64")
+    add_executable(simd_copy simd_copy.cpp)
+    target_link_libraries(simd_copy)
+    set_common_options(simd_copy)
+    if (ENABLE_SANITIZERS)
+        enable_sanitizers(simd_copy)
+    endif()
+
+    # Install the test executable
+    install(TARGETS simd_copy DESTINATION bin)
+endif()
