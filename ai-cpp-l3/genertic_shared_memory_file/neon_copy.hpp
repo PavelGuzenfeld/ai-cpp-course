@@ -1,10 +1,10 @@
 #pragma once
-#include <arm_neon.h>  // NEON intrinsics
-#include <cstddef>     // size_t
-#include <cstdint>     // uint8_t
-#include <cstring>     // std::memcpy
-#include <thread>      // std::jthread
-#include <vector>      // std::vector
+#include <arm_neon.h> // NEON intrinsics
+#include <cstddef>    // size_t
+#include <cstdint>    // uint8_t
+#include <cstring>    // std::memcpy
+#include <thread>     // std::jthread
+#include <vector>     // std::vector
 
 // NEON memcpy implementation
 void neon_memcpy(void *dest, const void *src, size_t size)
@@ -31,12 +31,12 @@ void neon_memcpy(void *dest, const void *src, size_t size)
 
 constexpr void parallel_memcpy(void *dst_, const void *src_, size_t size)
 {
-   
+
     static auto THREADS_COUNT = std::thread::hardware_concurrency();
     static auto thread_vector = std::vector<std::jthread>(THREADS_COUNT);
     static auto chunk_size = size / THREADS_COUNT;
     auto *dst = static_cast<uint8_t *>(dst_);
-    auto *src = static_cast<const uint8_t *>(src_)
+    auto *src = static_cast<const uint8_t *>(src_);
 
     for (size_t t = 0; t < THREADS_COUNT; ++t)
     {
@@ -44,10 +44,8 @@ constexpr void parallel_memcpy(void *dst_, const void *src_, size_t size)
                                         {
             size_t start = t * chunk_size;
             size_t end = (t == THREADS_COUNT - 1) ? size : start + chunk_size;
-            neon_memcpy(dst + start, src + start, end - start);
-        });
+            neon_memcpy(dst + start, src + start, end - start); });
     }
-
 }
 
 constexpr size_t chunk_size = 384 * 1024; // L1d cache size
@@ -62,4 +60,3 @@ void copy_image_chunked(const void *source_, void *destination_, size_t size)
         std::memcpy(destination + offset, source + offset, bytes_to_copy);
     }
 }
-  
