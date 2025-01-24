@@ -160,3 +160,11 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64")
     # Install the test executable
     install(TARGETS simd_copy DESTINATION bin)
 endif()
+
+add_executable(double_buffer_swapper_test double_buffer_swapper_test.cpp)
+target_link_libraries(double_buffer_swapper_test PRIVATE fmt)
+set_common_options(double_buffer_swapper_test)
+if(ENABLE_SANITIZERS)
+    enable_sanitizers(double_buffer_swapper_test)
+endif()
+install(TARGETS double_buffer_swapper_test DESTINATION bin)
