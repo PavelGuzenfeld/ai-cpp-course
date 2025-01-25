@@ -168,3 +168,19 @@ if(ENABLE_SANITIZERS)
     enable_sanitizers(double_buffer_swapper_test)
 endif()
 install(TARGETS double_buffer_swapper_test DESTINATION bin)
+
+add_library(async_runner async_runner.cpp)
+target_link_libraries(async_runner PRIVATE fmt)
+
+install(TARGETS async_runner 
+        DESTINATION lib
+        )
+
+add_executable(async_runner_test async_runner_test.cpp)
+target_link_libraries(async_runner_test PRIVATE fmt async_runner)
+set_common_options(async_runner_test)
+if(ENABLE_SANITIZERS)
+    enable_sanitizers(async_runner_test)
+endif()
+install(TARGETS async_runner_test DESTINATION bin)
+
