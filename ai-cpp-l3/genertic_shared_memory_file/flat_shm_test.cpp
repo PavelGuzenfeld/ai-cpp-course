@@ -389,7 +389,7 @@ int main()
                 auto duration_acc = region.stats.duration_accumulator_us.load(std::memory_order_relaxed);
                 auto average_us = duration_acc / read_count;
                 fmt::print("Average transfer duration: {} us\n", average_us);
-                fmt::print("Average transfer duration: {} ms\n", average_us / 1000.0);
+                fmt::print("Average transfer duration: {} ms\n", static_cast<double>(average_us) / 1000.0);
             }
             else
             {
