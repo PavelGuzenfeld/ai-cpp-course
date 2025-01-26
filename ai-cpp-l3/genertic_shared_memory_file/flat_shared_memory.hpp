@@ -10,7 +10,7 @@ namespace flat_shm
         static constexpr std::expected<SharedMemory<FLAT_TYPE>, std::string> create(std::string const &shm_name) noexcept
         {
             auto const size = sizeof(FLAT_TYPE);
-            auto impl = std::move(flat_shm_impl::create(shm_name, size));
+            auto impl = flat_shm_impl::create(shm_name, size);
             if (impl.has_value())
             {
                 return SharedMemory<FLAT_TYPE>{std::move(impl.value())};
