@@ -8,7 +8,7 @@ extern "C"
 {
 
     std::array<std::uint8_t, 256> storage{};
-    void *__cxa_allocate_exception(unsigned long p_size) noexcept
+    void *__cxa_allocate_exception(unsigned long /*p_size*/) noexcept
     {
         static constexpr size_t offset = 128;
         return storage.data() + offset;
@@ -20,7 +20,7 @@ extern "C"
 
     std::array<std::byte, 1024> heap_memory{};
     std::span<std::byte> available_memory = heap_memory;
-    void *_sbrk(int p_amount)
+    void *_sbrk(std::size_t p_amount)
     {
         if (p_amount > available_memory.size())
         {
