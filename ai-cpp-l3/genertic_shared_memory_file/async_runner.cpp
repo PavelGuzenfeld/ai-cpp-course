@@ -64,6 +64,7 @@ namespace tasks
 
     AsyncRunner::~AsyncRunner() noexcept
     {
+        wait_for_all_tasks();
         async_stop();
     }
 
