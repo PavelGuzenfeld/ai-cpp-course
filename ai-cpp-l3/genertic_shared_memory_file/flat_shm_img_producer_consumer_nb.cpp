@@ -1,4 +1,7 @@
+#include "async_runner.hpp"
+#include "atomic_producer_consumer.hpp"
 #include "atomic_semaphore.hpp"
+#include "double_buffer_swapper.hpp"
 #include "flat_shm_impl.h"
 #include "image.hpp"
 #include "nanobind/nanobind.h"
@@ -43,29 +46,6 @@ void destroy(ProducerConsumer &producer_consumer)
 
 //--------------------------------------------------------------------------------------------
 
-using AtomicImage = AtomicSemaphore<img::Image4K_RGB>;
-
-struct AtomicProducerConsumer
-{
-    flat_shm_impl::shm shm_;
-    std::shared_ptr<img::Image4K_RGB> image_ = std::make_shared<img::Image4K_RGB>();
-};
-
-[[nodiscard]] constexpr AtomicProducerConsumer create_atomic(const std::string &shm_name)
-{
-    auto impl = flat_shm_impl::create(shm_name, sizeof(AtomicImage));
-    if (!impl)
-        throw std::runtime_error(impl.error());
-
-    return {
-        std::move(impl.value())};
-}
-
-void destroy_atomic(AtomicProducerConsumer &producer_consumer)
-{
-    flat_shm_impl::destroy(producer_consumer.shm_);
-}
-
 NB_MODULE(Share_memory_image_producer_consumer_nb, m)
 {
 
@@ -105,7 +85,7 @@ NB_MODULE(Share_memory_image_producer_consumer_nb, m)
     nb::class_<AtomicProducerConsumer>(m, "AtomicProducerConsumer")
         .def_static("create", [](nb::str const &shm_name)
                     { return create_atomic(shm_name.c_str()); })
-        .def(nb::init<>())
+        .def(nb::init<flat_shm_impl::shm &&>())
         .def("close", &destroy_atomic)
         .def("store", [](AtomicProducerConsumer &self, img::Image4K_RGB const &image)
              {
@@ -114,15 +94,27 @@ NB_MODULE(Share_memory_image_producer_consumer_nb, m)
         auto atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
         atomic_image->write(image); })
 
-        .def("load", [](AtomicProducerConsumer &self) -> std::shared_ptr<img::Image4K_RGB>
+        .def("load", [](AtomicProducerConsumer &self) -> img::Image4K_RGB const *
              {
-        if (!self.image_)
-            throw std::runtime_error("Image pointer is null.");
+                if (!self.image_)
+                     throw std::runtime_error("Image pointer is null.");
+                auto atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
+                //  return atomic_image->read();
+                self.img_ptr_ = const_cast<img::Image4K_RGB *>(atomic_image->read());
+                self.swapper_->stage(self.img_ptr_);
+                self.runner_->trigger_once();
+                return self.img_ptr_; }, nb::rv_policy::reference_internal);
 
-        auto * atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
-        auto const* result = atomic_image->read();
-        std::memcpy(self.image_.get(), result, sizeof(img::Image4K_RGB));
-                 return self.image_; }, nb::rv_policy::reference_internal);
+    // .def("load", [](AtomicProducerConsumer &self) -> std::shared_ptr<img::Image4K_RGB>
+    //      {
+    // if (!self.image_)
+    //     throw std::runtime_error("Image pointer is null.");
+
+    // auto * atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
+    // auto const* result = atomic_image->read();
+    // std::memcpy(self.image_.get(), result, sizeof(img::Image4K_RGB));
+    //          return self.image_; }, nb::rv_policy::reference_internal);
+
     //     .def("load", [](AtomicProducerConsumer &self) -> img::Image4K_RGB const*
     //          {
     // if (!self.image_)
