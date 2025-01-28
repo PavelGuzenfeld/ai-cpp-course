@@ -1,3 +1,4 @@
+#pragma once
 #include <atomic> // std::atomic
 #include <thread> // std::this_thread::yield
 
