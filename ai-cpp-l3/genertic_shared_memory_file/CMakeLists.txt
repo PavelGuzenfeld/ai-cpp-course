@@ -71,6 +71,8 @@ function(set_common_options target)
     endif()
 endfunction()
 
+# add_compile_options(-Wformat -Wall -Wextra -pedantic -Werror -Wconversion -Wshadow -Wunreachable-code -Wunused -Wunused-function)
+
 # Add the Python module
 add_library(Share_memory_image_producer_consumer MODULE
     flat_shm_img_producer_consumer_py.cpp
@@ -130,6 +132,7 @@ install(TARGETS my_module
 # Add the Python module
 add_library(Share_memory_image_producer_consumer_nb MODULE
     flat_shm_img_producer_consumer_nb.cpp
+    async_runner.cpp #TODO:replace with library
     flat_shm_producer_consumer.hpp
     image.hpp
     ${NANOBIND_SRC}
