@@ -129,9 +129,6 @@ RUN git clone --recurse-submodules https://github.com/wjakob/nanobind.git \
     && ln -s /usr/local/nanobind/cmake /usr/local/lib/cmake/nanobind \
     && ln -s /usr/local/nanobind/include/nanobind /usr/local/include/nanobind 
 
-RUN pip3 install nanobind
-
-
 WORKDIR /workspace
 
 CMD [ "bash" ]
