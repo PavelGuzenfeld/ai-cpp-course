@@ -13,6 +13,9 @@ find_package(pybind11 REQUIRED)
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 find_package(nanobind CONFIG REQUIRED HINTS /usr/local/nanobind/cmake)
 
+# Silence warnings in nanobind headers by marking as SYSTEM include
+include_directories(SYSTEM /usr/local/nanobind/include)
+
 # Add an option to enable sanitizers
 option(ENABLE_SANITIZERS "Enable Address/Undefined Behavior sanitizers" OFF)
 
@@ -39,6 +42,10 @@ function(set_common_options target)
             -fopenmp           # OpenMP for multithreading
             -ffast-math        # Fast math optimizations
             -Wstack-usage=4096 # Warn for large stack usage
+            -Wall              # Enable all warnings
+            -Wextra            # Enable extra warnings
+            -Wpedantic         # Enable pedantic warnings
+            -Werror            # Treat warnings as errors
         )
         target_link_options(${target} PRIVATE -flto) # Link-time optimization
     elseif(MSVC)
