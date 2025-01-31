@@ -6,7 +6,7 @@
 void inrement_nubmer_test()
 {
     unsigned int number = 0;
-    tasks::AsyncRunner runner([&number]()
+    tasks::SingleTaskRunner runner([&number]()
                               { ++number; },
                               [](std::string_view msg)
                               { fmt::print("Error: {}\n", msg); });
@@ -25,7 +25,7 @@ void test_trigger_exception()
     unsigned int exception_counter = 0;
     auto error_msg = "Test exception";
     auto size = std::string_view(error_msg).length();
-    tasks::AsyncRunner runner([&]()
+    tasks::SingleTaskRunner runner([&]()
                               { throw std::runtime_error(error_msg); },
                               [&](std::string_view msg)
                               {
@@ -44,7 +44,7 @@ void test_trigger_exception()
 void move_constructor_test()
 {
     auto counter = 0;
-    tasks::AsyncRunner runner([&]()
+    tasks::SingleTaskRunner runner([&]()
                               { ++counter; },
                               [](std::string_view msg)
                               {
@@ -56,7 +56,7 @@ void move_constructor_test()
     runner.wait_for_all_tasks(); // ensure tasks are processed
     assert(counter == 2 && " move_constractor_test failed");
 
-    tasks::AsyncRunner runner2(std::move(runner));
+    tasks::SingleTaskRunner runner2(std::move(runner));
     runner2.trigger_once();
     runner2.trigger_once();
     runner2.wait_for_all_tasks(); // ensure tasks are processed
@@ -67,7 +67,7 @@ void move_constructor_test()
 void move_assignment_test()
 {
     auto counter = 0;
-    tasks::AsyncRunner runner([&]()
+    tasks::SingleTaskRunner runner([&]()
                               { ++counter; },
                               [](std::string_view msg)
                               {
@@ -79,7 +79,7 @@ void move_assignment_test()
     runner.wait_for_all_tasks(); // ensure tasks are processed
     assert(counter == 2 && " move_constractor_test failed");
 
-    tasks::AsyncRunner runner2 = std::move(runner);
+    tasks::SingleTaskRunner runner2 = std::move(runner);
     runner2.trigger_once();
     runner2.trigger_once();
     runner2.wait_for_all_tasks(); // ensure tasks are processed
@@ -92,7 +92,7 @@ void start_stop_test()
 {
     auto counter = 0;
 
-    tasks::AsyncRunner runner([&]()
+    tasks::SingleTaskRunner runner([&]()
                               { ++counter; },
                               [](std::string_view msg)
                               {

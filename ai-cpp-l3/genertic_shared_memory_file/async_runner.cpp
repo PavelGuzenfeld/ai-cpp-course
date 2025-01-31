@@ -8,7 +8,7 @@
 
 namespace tasks
 {
-    struct AsyncRunner::Impl
+    struct SingleTaskRunner::Impl
     {
         std::atomic<bool> stop_flag_ = true;
         std::atomic<unsigned int> task_counter_ = 0;
@@ -17,12 +17,12 @@ namespace tasks
         std::jthread swap_thread_;
     };
 
-    AsyncRunner::AsyncRunner(callback_t consumer_fn, log_printer_t log_printer)
+    SingleTaskRunner::SingleTaskRunner(callback_t consumer_fn, log_printer_t log_printer)
         : consumer_(std::move(consumer_fn)), log_printer_(std::move(log_printer)), pimpl_(std::make_unique<Impl>())
     {
     }
 
-    AsyncRunner::AsyncRunner(AsyncRunner &&other) noexcept
+    SingleTaskRunner::SingleTaskRunner(SingleTaskRunner &&other) noexcept
         : consumer_(std::move(other.consumer_)),
           log_printer_(std::move(other.log_printer_)),
           pimpl_(std::make_unique<Impl>())
@@ -42,7 +42,7 @@ namespace tasks
         }
     }
     
-    AsyncRunner &AsyncRunner::operator=(AsyncRunner &&other) noexcept
+    SingleTaskRunner &SingleTaskRunner::operator=(SingleTaskRunner &&other) noexcept
     {
         if (this != &other)
         {
@@ -62,13 +62,13 @@ namespace tasks
         return *this;
     }
 
-    AsyncRunner::~AsyncRunner() noexcept
+    SingleTaskRunner::~SingleTaskRunner() noexcept
     {
         wait_for_all_tasks();
         async_stop();
     }
 
-    void AsyncRunner::async_start() noexcept
+    void SingleTaskRunner::async_start() noexcept
     {
         if (!pimpl_)
         {
@@ -85,7 +85,7 @@ namespace tasks
                                             { swapLoop(); });
     }
 
-    void AsyncRunner::async_stop() noexcept
+    void SingleTaskRunner::async_stop() noexcept
     {
         if (!pimpl_)
         {
@@ -104,7 +104,7 @@ namespace tasks
         }
     }
 
-    void AsyncRunner::trigger_once() noexcept
+    void SingleTaskRunner::trigger_once() noexcept
     {
         if (!pimpl_)
         {
@@ -119,7 +119,7 @@ namespace tasks
         pimpl_->cv_.notify_one();
     }
 
-    void AsyncRunner::swapLoop() noexcept
+    void SingleTaskRunner::swapLoop() noexcept
     try
     {
         if (!pimpl_)
@@ -165,7 +165,7 @@ namespace tasks
         log_printer_("Unknown exception caught in swapLoop.");
     }
 
-    void AsyncRunner::wait_for_all_tasks() noexcept
+    void SingleTaskRunner::wait_for_all_tasks() noexcept
     {
         if (!pimpl_)
         {

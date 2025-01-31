@@ -16,13 +16,13 @@ struct AtomicProducerConsumer
     std::shared_ptr<img::Image4K_RGB> image_ = std::make_shared<img::Image4K_RGB>();
     img::Image4K_RGB *img_ptr_ = nullptr;
     std::unique_ptr<DoubleBufferSwapper<img::Image4K_RGB>> swapper_ = nullptr;
-    std::unique_ptr<tasks::AsyncRunner> runner_ = nullptr;
+    std::unique_ptr<tasks::SingleTaskRunner> runner_ = nullptr;
 
     AtomicProducerConsumer(flat_shm_impl::shm &&shm)
         : shm_(std::move(shm))
     {
         swapper_ = std::make_unique<DoubleBufferSwapper<img::Image4K_RGB>>(&img_ptr_, image_.get());
-        runner_ = std::make_unique<tasks::AsyncRunner>([this]
+        runner_ = std::make_unique<tasks::SingleTaskRunner>([this]
                                                        { swapper_->swap(); }, [this](std::string_view msg)
                                                        { log(msg); });
     }
