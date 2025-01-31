@@ -99,27 +99,8 @@ NB_MODULE(Share_memory_image_producer_consumer_nb, m)
                 if (!self.image_)
                      throw std::runtime_error("Image pointer is null.");
                 auto atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
-                //  return atomic_image->read();
                 self.img_ptr_ = const_cast<img::Image4K_RGB *>(atomic_image->read());
                 self.swapper_->stage(self.img_ptr_);
                 self.runner_->trigger_once();
                 return self.img_ptr_; }, nb::rv_policy::reference_internal);
-
-    // .def("load", [](AtomicProducerConsumer &self) -> std::shared_ptr<img::Image4K_RGB>
-    //      {
-    // if (!self.image_)
-    //     throw std::runtime_error("Image pointer is null.");
-
-    // auto * atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
-    // auto const* result = atomic_image->read();
-    // std::memcpy(self.image_.get(), result, sizeof(img::Image4K_RGB));
-    //          return self.image_; }, nb::rv_policy::reference_internal);
-
-    //     .def("load", [](AtomicProducerConsumer &self) -> img::Image4K_RGB const*
-    //          {
-    // if (!self.image_)
-    //     throw std::runtime_error("Image pointer is null.");
-
-    // auto atomic_image = static_cast<AtomicImage *>(self.shm_.data_);
-    // return atomic_image->read(); }, nb::rv_policy::reference_internal);
 }
