@@ -1,6 +1,6 @@
 [submodule "ai-cpp-l3/single-task-runner"]
 	path = ai-cpp-l3/single-task-runner
 	url = https://github.com/PavelGuzenfeld/single-task-runner
-[submodule "exceptions-rt"]
-	path = exceptions-rt
+[submodule "ai-cpp-l3/exceptions-rt"]
+	path = ai-cpp-l3/exceptions-rt
 	url = https://github.com/PavelGuzenfeld/exceptions-rt
