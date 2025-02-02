@@ -7,3 +7,6 @@
 [submodule "ai-cpp-l3/double-buffer-swapper"]
 	path = ai-cpp-l3/double-buffer-swapper
 	url = https://github.com/PavelGuzenfeld/double-buffer-swapper
+[submodule "ai-cpp-l3/flat-type"]
+	path = ai-cpp-l3/flat-type
+	url = https://github.com/PavelGuzenfeld/flat-type
