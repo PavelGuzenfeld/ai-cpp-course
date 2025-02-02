@@ -4,3 +4,6 @@
 [submodule "ai-cpp-l3/exceptions-rt"]
 	path = ai-cpp-l3/exceptions-rt
 	url = https://github.com/PavelGuzenfeld/exceptions-rt
+[submodule "ai-cpp-l3/double-buffer-swapper"]
+	path = ai-cpp-l3/double-buffer-swapper
+	url = https://github.com/PavelGuzenfeld/double-buffer-swapper
