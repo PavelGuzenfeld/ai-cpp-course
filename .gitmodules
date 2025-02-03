@@ -13,3 +13,6 @@
 [submodule "ai-cpp-l3/ext/cmake-library"]
 	path = ai-cpp-l3/ext/cmake-library
 	url = https://github.com/PavelGuzenfeld/cmake-library
+[submodule "ai-cpp-l3/image-shm-dblbuf"]
+	path = ai-cpp-l3/image-shm-dblbuf
+	url = https://github.com/PavelGuzenfeld/image-shm-dblbuf
