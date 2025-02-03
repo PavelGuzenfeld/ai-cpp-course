@@ -10,3 +10,6 @@
 [submodule "ai-cpp-l3/flat-type"]
 	path = ai-cpp-l3/flat-type
 	url = https://github.com/PavelGuzenfeld/flat-type
+[submodule "ai-cpp-l3/ext/cmake-library"]
+	path = ai-cpp-l3/ext/cmake-library
+	url = https://github.com/PavelGuzenfeld/cmake-library
