@@ -52,3 +52,6 @@ __pycache__/
 
 #vscode
 .vscode/
+
+# Valgrind
+vgcore.*
