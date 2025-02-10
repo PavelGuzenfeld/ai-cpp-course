@@ -25,3 +25,6 @@
 [submodule "exception-rt"]
 	path = exception-rt
 	url = https://github.com/PavelGuzenfeld/exception-rt
+[submodule "shm"]
+	path = shm
+	url = https://github.com/PavelGuzenfeld/shm
