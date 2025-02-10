@@ -28,3 +28,6 @@
 [submodule "shm"]
 	path = shm
 	url = https://github.com/PavelGuzenfeld/shm
+[submodule "ai-cpp-l3/shm"]
+	path = ai-cpp-l3/shm
+	url = https://github.com/PavelGuzenfeld/shm
