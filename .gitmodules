@@ -31,3 +31,6 @@
 [submodule "ai-cpp-l3/shm"]
 	path = ai-cpp-l3/shm
 	url = https://github.com/PavelGuzenfeld/shm
+[submodule "ai-cpp-l3/safe-shm"]
+	path = ai-cpp-l3/safe-shm
+	url = https://github.com/PavelGuzenfeld/safe-shm
