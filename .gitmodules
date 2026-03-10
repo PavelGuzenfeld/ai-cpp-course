@@ -10,15 +10,9 @@
 [submodule "ai-cpp-l3/flat-type"]
 	path = ai-cpp-l3/flat-type
 	url = https://github.com/PavelGuzenfeld/flat-type
-[submodule "ai-cpp-l3/ext/cmake-library"]
-	path = ai-cpp-l3/ext/cmake-library
-	url = https://github.com/PavelGuzenfeld/cmake-library
 [submodule "ai-cpp-l3/image-shm-dblbuf"]
 	path = ai-cpp-l3/image-shm-dblbuf
 	url = https://github.com/PavelGuzenfeld/image-shm-dblbuf
-[submodule "ai-cpp-l3/cmake-library"]
-	path = ai-cpp-l3/cmake-library
-	url = https://github.com/PavelGuzenfeld/cmake-library
 [submodule "ai-cpp-l3/--force"]
 	path = ai-cpp-l3/--force
 	url = https://github.com/PavelGuzenfeld/double-buffer-swapper
