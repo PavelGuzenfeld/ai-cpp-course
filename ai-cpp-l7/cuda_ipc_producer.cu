@@ -65,7 +65,7 @@ int main()
 
     // 3. Create a CUDA event to signal when data is ready
     cudaEvent_t event;
-    CHECK_CUDA(cudaEventCreate(&event, cudaEventInterprocess | cudaEventDisableTimingPeer));
+    CHECK_CUDA(cudaEventCreate(&event, cudaEventInterprocess | cudaEventDisableTiming));
     CHECK_CUDA(cudaEventRecord(event));
     CHECK_CUDA(cudaEventSynchronize(event));
 

@@ -34,13 +34,13 @@ struct IpcHandles {
 };
 
 // Kernel: sum reduction (for verification)
-__global__ void partial_sum(const float* data, double* result, int n)
+__global__ void partial_sum(const float* data, float* result, int n)
 {
-    __shared__ double sdata[256];
+    __shared__ float sdata[256];
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    sdata[tid] = (idx < n) ? static_cast<double>(data[idx]) : 0.0;
+    sdata[tid] = (idx < n) ? data[idx] : 0.0f;
     __syncthreads();
 
     for (int s = blockDim.x / 2; s > 0; s >>= 1) {
@@ -130,9 +130,9 @@ int main()
 
     // 5. Benchmark: compare IPC access vs copy-through-CPU
     // IPC path: just read GPU memory (already mapped)
-    double* d_sum;
-    CHECK_CUDA(cudaMalloc(&d_sum, sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_sum, 0, sizeof(double)));
+    float* d_sum;
+    CHECK_CUDA(cudaMalloc(&d_sum, sizeof(float)));
+    CHECK_CUDA(cudaMemset(d_sum, 0, sizeof(float)));
 
     CHECK_CUDA(cudaEventRecord(start));
     partial_sum<<<blocks, threads>>>(d_data, d_sum, N);
@@ -147,7 +147,7 @@ int main()
     float* d_copy;
     CHECK_CUDA(cudaMallocHost(&h_buf, N * sizeof(float)));
     CHECK_CUDA(cudaMalloc(&d_copy, N * sizeof(float)));
-    CHECK_CUDA(cudaMemset(d_sum, 0, sizeof(double)));
+    CHECK_CUDA(cudaMemset(d_sum, 0, sizeof(float)));
 
     CHECK_CUDA(cudaEventRecord(start));
     CHECK_CUDA(cudaMemcpy(h_buf, d_data, N * sizeof(float), cudaMemcpyDeviceToHost));

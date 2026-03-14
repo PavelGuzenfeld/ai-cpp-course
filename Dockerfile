@@ -1,6 +1,4 @@
-# Use NVIDIA CUDA base for GPU support (compatible with --gpus all)
-# Falls back gracefully to CPU-only when run without --gpus
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM ubuntu:22.04
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
@@ -22,10 +20,6 @@ RUN apt-get update && \
 RUN pip3 install meson ninja numpy opencv-python pyudev termcolor scipy pyulog pymavlink asyncio pydantic \
     pybind11 colcon-core colcon-common-extensions setuptools==58.2.0 empy==3.3.4 \
     pytest nanobind \
-    && rm -rf /root/.cache/pip
-
-# Install PyTorch with CUDA support (for GPU benchmarks and tests)
-RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu124 \
     && rm -rf /root/.cache/pip
 
 RUN echo "alias ll='ls -l'" >> ~/.bashrc \
