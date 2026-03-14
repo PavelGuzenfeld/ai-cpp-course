@@ -409,14 +409,18 @@ What it optimizes:
 
 ---
 
-## Files in This Lesson
+## Lesson Files
 
-| File | What It Demonstrates |
-|------|---------------------|
-| `bbox_slots.py` | `__slots__`, `@dataclass(slots=True)`, memory measurement |
-| `numpy_views.py` | Views vs. copies, `np.shares_memory()` |
-| `preallocated_buffers.py` | Pre-allocated numpy buffers |
-| `thread_pool_io.py` | `ThreadPoolExecutor` vs. `Thread()` per task |
-| `benchmark_python_opt.py` | Benchmark all optimizations with timing + memory |
-| `test_python_opt.py` | Unit tests for all variants |
-| `test_integration_python_opt.py` | Integration test simulating a tracking loop |
+| File | Description |
+|------|-------------|
+| [bbox_slots.py](bbox_slots.py) | Slots and dataclass memory optimization |
+| [numpy_views.py](numpy_views.py) | Numpy views vs copies demonstration |
+| [preallocated_buffers.py](preallocated_buffers.py) | Pre-allocated numpy buffer patterns |
+| [thread_pool_io.py](thread_pool_io.py) | ThreadPoolExecutor vs Thread-per-task |
+| [binary_protocol.py](binary_protocol.py) | Binary protocol for efficient data transfer |
+| [defensive_patterns.py](defensive_patterns.py) | Defensive coding patterns for Python |
+| [kalman_preallocated.py](kalman_preallocated.py) | Kalman filter with pre-allocated buffers |
+| [torch_compile_demo.py](torch_compile_demo.py) | torch.compile usage demonstration |
+| [benchmark_python_opt.py](benchmark_python_opt.py) | Benchmark suite for all optimizations |
+| [test_python_opt.py](test_python_opt.py) | Unit tests for all variants |
+| [test_integration_python_opt.py](test_integration_python_opt.py) | Integration test for tracking loop |

@@ -183,11 +183,11 @@ Key flags:
 - Compiler flags (`-O3`, `-march=native`) unlock hardware-specific optimizations
 - For numerical loops, C++ can be 50-100x faster than pure Python
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `setup.md` | Environment setup instructions |
-| `CMakeLists.txt` | Build configuration |
-| `portable_simd_sum_vectors.cpp` | C++ SIMD vector sum with pybind11 |
-| `sum.py` | Python benchmark comparing all three approaches |
+| File | Description |
+|------|-------------|
+| [portable_simd_sum_vectors.cpp](portable_simd_sum_vectors.cpp) | SIMD vector addition with pybind11 bindings |
+| [sum.py](sum.py) | Python benchmark comparing all approaches |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
+| [setup.md](setup.md) | Environment setup instructions |

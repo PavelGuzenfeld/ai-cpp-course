@@ -219,11 +219,12 @@ python3 ai-cpp-l2/crop_resize.py
 - OpenCV `cv::Mat` and NumPy share the same memory layout (row-major BGR)
 - `constexpr` moves computation from runtime to compile time
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `CMakeLists.txt` | Build configuration for the image processor module |
-| `cpp_image_processor.cpp` | C++ crop+resize with three execution modes |
-| `crop_resize.py` | Python benchmark comparing all approaches |
-| `bmp-2048x1365.bmp` | Test image for benchmarking |
+| File | Description |
+|------|-------------|
+| [cpp_image_processor.cpp](cpp_image_processor.cpp) | C++ crop and resize with execution policies |
+| [crop_resize.py](crop_resize.py) | Python benchmark comparing all approaches |
+| [opencv_benchmark.py](opencv_benchmark.py) | OpenCV performance measurement script |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
+| [bmp-2048x1365.bmp](bmp-2048x1365.bmp) | Test image for benchmarking |

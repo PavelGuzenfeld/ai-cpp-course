@@ -280,15 +280,18 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 - Batch inference amortizes fixed overhead across multiple inputs
 - Not all workloads benefit from GPU — small data, branchy code, I/O-bound work stays on CPU
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `CMakeLists.txt` | Build configuration with optional CUDA support |
-| `gpu_preprocess.cu` | Fused CUDA kernel: uint8 HWC → float32 CHW + normalize |
-| `gpu_preprocess_cpu.cpp` | CPU reference + 3-step "tracker_engine style" preprocess |
-| `pinned_allocator.cpp` | Pinned memory pool with cudaMallocHost/malloc fallback |
-| `benchmark_gpu.py` | Performance comparison: CPU vs GPU, regular vs pinned |
-| `gpu_pipeline_demo.py` | Side-by-side "wrong way" vs "right way" GPU pipeline |
-| `test_gpu.py` | Unit tests for preprocess and allocator (graceful GPU skip) |
-| `test_integration_gpu.py` | Full pipeline tests, sustained load, batch inference |
+| File | Description |
+|------|-------------|
+| [gpu_preprocess.cu](gpu_preprocess.cu) | Fused CUDA preprocessing kernel |
+| [gpu_preprocess_cpu.cpp](gpu_preprocess_cpu.cpp) | CPU reference preprocessing implementation |
+| [pinned_allocator.cpp](pinned_allocator.cpp) | Pinned memory pool with fallback |
+| [batch_inference_demo.py](batch_inference_demo.py) | Batched GPU inference demonstration |
+| [cuda_streams_demo.py](cuda_streams_demo.py) | CUDA streams overlap demonstration |
+| [gpu_pipeline_demo.py](gpu_pipeline_demo.py) | Wrong vs right GPU pipeline comparison |
+| [tracker_engine_fixes.py](tracker_engine_fixes.py) | Tracker engine GPU anti-pattern fixes |
+| [benchmark_gpu.py](benchmark_gpu.py) | CPU vs GPU performance comparison |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration with CUDA support |
+| [test_gpu.py](test_gpu.py) | Unit tests for preprocess and allocator |
+| [test_integration_gpu.py](test_integration_gpu.py) | Full pipeline and batch inference tests |

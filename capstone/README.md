@@ -130,3 +130,10 @@ components and the full pipeline.
 
 Good luck!  When you are done, run the full test suite and benchmark one final
 time to confirm everything works end-to-end.
+
+## Lesson Files
+
+| File | Description |
+|------|-------------|
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration for capstone |
+| [pyproject.toml](pyproject.toml) | Package configuration for fast_tracker_utils |
