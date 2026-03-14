@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Lint Python files
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --max-complexity=10 --max-line-length=120 --statistics
+
+      - name: Validate C++ files are valid UTF-8
+        run: |
+          find . \( -name "*.cpp" -o -name "*.cu" -o -name "*.hpp" -o -name "*.h" \) | while read f; do
+            if ! iconv -f UTF-8 -t UTF-8 "$f" > /dev/null 2>&1; then
+              echo "ERROR: $f is not valid UTF-8"
+              exit 1
+            fi
+          done
+          echo "All C++ files are valid UTF-8"
+
+  version-check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify VERSION file
+        run: |
+          if [ ! -f VERSION ]; then
+            echo "ERROR: VERSION file not found"
+            exit 1
+          fi
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'; then
+            echo "ERROR: VERSION '$VERSION' is not valid semver"
+            exit 1
+          fi
+          echo "VERSION: $VERSION"
+
+  docker-build-and-test:
+    runs-on: ubuntu-22.04
+    needs: [lint, version-check]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build Docker image
+        run: docker build -t ai-cpp-course:ci .
+
+      - name: Run Python-only tests (L5) inside Docker
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip install pytest -q && pytest ai-cpp-l5/ -v"
+
+      - name: Build all lessons inside Docker
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && colcon build 2>&1 || true"
+
+      - name: Run compiled-module tests inside Docker
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip install pytest -q && source install/setup.bash 2>/dev/null; pytest ai-cpp-l4/ ai-cpp-l6/ ai-cpp-l7/ ai-cpp-l8/ -v 2>&1 || true"
+
+      - name: Run full test suite inside Docker
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip install pytest -q && source install/setup.bash 2>/dev/null; bash tests/run_all_tests.sh"

@@ -19,6 +19,7 @@ RUN apt-get update && \
 
 RUN pip3 install meson ninja numpy opencv-python pyudev termcolor scipy pyulog pymavlink asyncio pydantic \
     pybind11 colcon-core colcon-common-extensions setuptools==58.2.0 empy==3.3.4 \
+    pytest nanobind \
     && rm -rf /root/.cache/pip
 
 RUN echo "alias ll='ls -l'" >> ~/.bashrc \
