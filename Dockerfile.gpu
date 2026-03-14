@@ -1,0 +1,28 @@
+# GPU-enabled image for local testing with NVIDIA GPUs.
+# Extends the base image with CUDA toolkit and PyTorch.
+#
+# Build:
+#   docker build -t ai-cpp-course -f Dockerfile .
+#   docker build -t ai-cpp-course:gpu -f Dockerfile.gpu .
+#
+# Run:
+#   docker run -it --gpus all -v $(pwd):/workspace ai-cpp-course:gpu
+
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS cuda-base
+
+# Copy everything from the base ai-cpp-course image
+FROM ai-cpp-course:latest AS base
+
+# Bring in CUDA toolkit from nvidia image
+COPY --from=cuda-base /usr/local/cuda /usr/local/cuda
+ENV PATH="/usr/local/cuda/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install PyTorch with CUDA support
+RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu124 \
+    && rm -rf /root/.cache/pip
+
+WORKDIR /workspace
+CMD [ "bash" ]

@@ -49,11 +49,12 @@ Everything runs inside Docker -- no environment pollution.
 # Build the development image
 docker build -t ai-cpp-course -f Dockerfile .
 
-# Run the container (CPU only)
+# Run the container
 docker run -it -v $(pwd):/workspace ai-cpp-course
 
-# Run with GPU support (requires nvidia-container-toolkit)
-docker run -it --gpus all -v $(pwd):/workspace ai-cpp-course
+# For GPU lessons (L7): build and run the GPU image
+docker build -t ai-cpp-course:gpu -f Dockerfile.gpu .
+docker run -it --gpus all -v $(pwd):/workspace ai-cpp-course:gpu
 
 # Inside the container: build all lessons
 cd /workspace

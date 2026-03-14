@@ -324,13 +324,15 @@ Process A (GPU) → IPC handle → Process B (GPU)
 
 ### Performance: IPC vs CPU Round-Trip
 
+Measured on NVIDIA GeForce RTX 3060 Laptop GPU:
+
 | Data size | CUDA IPC | Pinned D2H+H2D | Pageable D2H+H2D |
 |-----------|----------|-----------------|-------------------|
-| 4 MB  | ~0.01 ms | ~0.5 ms | ~1.0 ms |
-| 16 MB | ~0.01 ms | ~2.0 ms | ~3.8 ms |
-| 64 MB | ~0.01 ms | ~7.6 ms | ~14.9 ms |
+| 4 MB  | 0.07 ms | 1.86 ms | 1.01 ms |
+| 16 MB | ~0.07 ms | 7.13 ms | 4.32 ms |
+| 64 MB | ~0.07 ms | 33.56 ms | 31.07 ms |
 
-CUDA IPC is effectively free — once the handle is opened, the pointer works like any device pointer. The 64MB case (a 4K RGB frame) shows a **760x speedup** over pinned copies.
+CUDA IPC is effectively free — once the handle is opened, the pointer works like any device pointer. For 4MB the IPC demo measured a **15x speedup** over the copy-through-CPU path. For larger data the gap widens further since IPC cost stays constant.
 
 ### When to Use CUDA IPC
 
