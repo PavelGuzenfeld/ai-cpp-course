@@ -24,6 +24,10 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 | L6 | Hardware-Level Measurement | `perf_counter_ns`, cache benchmarks, GPU timing |
 | L7 | NVIDIA GPU Programming | Fused CUDA kernels, pinned memory, CPU-GPU pipeline |
 | L8 | Compile-Time Concepts | C++20 concepts, constexpr LUTs, variant state machines |
+| L9 | Going to Production | scikit-build-core packaging, type stubs, Docker distribution |
+| L10 | Profiling-Driven Optimization | The full workflow: profile → identify → optimize → measure |
+| L11 | Memory Safety Without Sacrifice | `std::span`, `std::optional`, ASAN/UBSAN, smart pointers |
+| **Capstone** | **Build a Fast Tracker** | **Reimplement tracker_engine bottlenecks, package as pip library** |
 
 ## Course Progression
 
@@ -31,6 +35,10 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 L1 SIMD ──> L2 Cache ──> L3 Shared Memory ──> L4 Nanobind
                                                     │
 L8 Concepts <── L7 GPU <── L6 Measurement <── L5 Python Opt
+    │
+L9 Packaging ──> L10 Profiling Workflow ──> L11 Memory Safety
+                                                    │
+                                              Capstone Project
 ```
 
 ## Quick Start
