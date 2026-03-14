@@ -2,7 +2,7 @@
 
 **Production C++ for CV/AI Python Developers**
 
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](VERSION)
 
 A hands-on course for computer vision and algorithm experts who use Python daily
 but need to produce production-level performance. Instead of rewriting everything
@@ -16,18 +16,18 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 
 | Lesson | Topic | Key Concepts |
 |--------|-------|--------------|
-| L1 | SIMD & Environment Setup | `std::execution::unseq`, pybind11, C++ vs Python perf |
-| L2 | Image Processing & Cache Awareness | Cache hierarchy, parallel STL, OpenCV C++ |
-| L3 | Shared Memory & IPC | nanobind intro, POSIX shm, lock-free patterns |
-| L4 | Nanobind Framework | Zero-copy ndarray, C++ BoundingBox, buffer pools |
-| L5 | Python Optimization | `__slots__`, numpy views, pre-allocated buffers, thread pools |
-| L6 | Hardware-Level Measurement | `perf_counter_ns`, cache benchmarks, GPU timing |
-| L7 | NVIDIA GPU Programming | Fused CUDA kernels, pinned memory, CPU-GPU pipeline |
-| L8 | Compile-Time Concepts | C++20 concepts, constexpr LUTs, variant state machines |
-| L9 | Going to Production | scikit-build-core packaging, type stubs, Docker distribution |
-| L10 | Profiling-Driven Optimization | The full workflow: profile → identify → optimize → measure |
-| L11 | Memory Safety Without Sacrifice | `std::span`, `std::optional`, ASAN/UBSAN, smart pointers |
-| **Capstone** | **Build a Fast Tracker** | **Reimplement tracker_engine bottlenecks, package as pip library** |
+| [L1](ai-cpp-l1/) | SIMD & Environment Setup | `std::execution::unseq`, [pybind11](https://github.com/pybind/pybind11), C++ vs Python perf |
+| [L2](ai-cpp-l2/) | Image Processing & Cache Awareness | Cache hierarchy, parallel STL, [OpenCV](https://opencv.org/) C++ |
+| [L3](ai-cpp-l3/) | Shared Memory & IPC | [nanobind](https://github.com/wjakob/nanobind) intro, POSIX shm, lock-free patterns |
+| [L4](ai-cpp-l4/) | Nanobind Framework | Zero-copy ndarray, C++ BoundingBox, buffer pools |
+| [L5](ai-cpp-l5/) | Python Optimization | `__slots__`, numpy views, pre-allocated buffers, thread pools |
+| [L6](ai-cpp-l6/) | Hardware-Level Measurement | `perf_counter_ns`, cache benchmarks, GPU timing |
+| [L7](ai-cpp-l7/) | NVIDIA GPU Programming | Fused CUDA kernels, pinned memory, CPU-GPU pipeline |
+| [L8](ai-cpp-l8/) | Compile-Time Concepts | C++20 concepts, constexpr LUTs, variant state machines |
+| [L9](ai-cpp-l9/) | Going to Production | [scikit-build-core](https://github.com/scikit-build/scikit-build-core) packaging, type stubs, Docker distribution |
+| [L10](ai-cpp-l10/) | Profiling-Driven Optimization | The full workflow: profile → identify → optimize → measure |
+| [L11](ai-cpp-l11/) | Memory Safety Without Sacrifice | `std::span`, `std::optional`, [ASAN](https://clang.llvm.org/docs/AddressSanitizer.html)/[UBSAN](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html), smart pointers |
+| [**Capstone**](capstone/) | **Build a Fast Tracker** | **Reimplement tracker_engine bottlenecks, package as pip library** |
 
 ## Course Progression
 

@@ -348,7 +348,7 @@ The ownership semantics are encoded in the type:
 
 ---
 
-## ASAN and UBSAN — Catch Bugs Automatically
+## [ASAN](https://clang.llvm.org/docs/AddressSanitizer.html) and [UBSAN](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html) — Catch Bugs Automatically
 
 ### What They Are
 
@@ -422,7 +422,7 @@ A standalone program (not a Python module) with intentionally buggy functions:
 
 ## gsl::not_null — Document Intent
 
-The C++ Guidelines Support Library provides `gsl::not_null<T>`:
+The [C++ Guidelines Support Library](https://github.com/microsoft/GSL) provides `gsl::not_null<T>`:
 
 ```cpp
 #include <gsl/gsl>
@@ -489,7 +489,7 @@ processing thousands of detections per frame, this is significant.
 2. **RAII File Reader**: Write an `RAIIFileReader` class that opens a file in
    its constructor and closes it in its destructor. Add a `read_doubles()`
    method that reads `n` doubles from the file into a `std::vector<double>`.
-   Expose it via nanobind. What happens if you try to read from a moved-from
+   Expose it via [nanobind](https://github.com/wjakob/nanobind). What happens if you try to read from a moved-from
    reader?
 
 3. **Ownership Chain**: Create a chain of three objects where `A` uniquely owns

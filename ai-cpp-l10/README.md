@@ -416,7 +416,7 @@ not just the performance.
 ### 4. Micro-optimizing Python when you should use C++
 
 If a Python function is the bottleneck and you've eliminated all waste, the
-next step is C++ — not more Python tricks. Lessons 1-9 taught you how.
+next step is C++ — not more Python tricks. [Lessons 1](../ai-cpp-l1/)–[9](../ai-cpp-l9/) taught you how.
 
 ### 5. Ignoring memory
 

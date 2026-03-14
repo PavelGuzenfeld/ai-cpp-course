@@ -164,7 +164,7 @@ before measuring.
 
 ## Profiling Tools Overview
 
-### py-spy (Python)
+### [py-spy](https://github.com/benfred/py-spy) (Python)
 
 Sampling profiler. Attaches to a running Python process without modifying code.
 Shows which Python functions consume the most time. Low overhead.
@@ -174,7 +174,7 @@ py-spy top --pid <PID>
 py-spy record -o profile.svg -- python my_script.py
 ```
 
-### perf stat (Linux)
+### [perf stat](https://perf.wiki.kernel.org/) (Linux)
 
 Hardware performance counters. Measures cache misses, branch mispredictions, IPC
 (instructions per cycle). Tells you WHY code is slow at the hardware level.
@@ -184,7 +184,7 @@ perf stat ./my_program
 # Shows: cycles, instructions, cache-misses, branch-misses
 ```
 
-### nsys (NVIDIA Nsight Systems)
+### [nsys](https://developer.nvidia.com/nsight-systems) (NVIDIA Nsight Systems)
 
 GPU profiler. Shows CPU/GPU timeline, kernel launches, memory transfers, synchronization.
 Essential for understanding GPU pipeline stalls.
@@ -224,7 +224,7 @@ In `keep_track()`, the hot loop looks like:
 
 Measuring each stage separately tells you where to focus optimization effort.
 The tools in this lesson let you do exactly that — with nanosecond precision from C++,
-exposed to Python through nanobind.
+exposed to Python through [nanobind](https://github.com/wjakob/nanobind).
 
 ## Build and Run
 

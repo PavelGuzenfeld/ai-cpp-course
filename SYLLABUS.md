@@ -55,31 +55,31 @@ Day 5: Capstone project
 
 | Problem | Go to |
 |---------|-------|
-| "My Python loop is slow" | L1 (SIMD), L5 (Python opt) |
-| "Too many allocations per frame" | L5 (pre-alloc), L4 (C++ buffer pool) |
-| "GPU inference is slow" | L7 (fused kernels, pinned memory) |
-| "How do I measure what's slow?" | L6 (measurement), L10 (workflow) |
-| "How do I ship this to production?" | L9 (packaging) |
-| "I keep getting segfaults in C++" | L11 (memory safety) |
-| "My state machine is string-based" | L8 (variant + visit) |
-| "I need inter-process communication" | L3 (shared memory) |
+| "My Python loop is slow" | [L1](ai-cpp-l1/) (SIMD), [L5](ai-cpp-l5/) (Python opt) |
+| "Too many allocations per frame" | [L5](ai-cpp-l5/) (pre-alloc), [L4](ai-cpp-l4/) (C++ buffer pool) |
+| "GPU inference is slow" | [L7](ai-cpp-l7/) (fused kernels, pinned memory) |
+| "How do I measure what's slow?" | [L6](ai-cpp-l6/) (measurement), [L10](ai-cpp-l10/) (workflow) |
+| "How do I ship this to production?" | [L9](ai-cpp-l9/) (packaging) |
+| "I keep getting segfaults in C++" | [L11](ai-cpp-l11/) (memory safety) |
+| "My state machine is string-based" | [L8](ai-cpp-l8/) (variant + visit) |
+| "I need inter-process communication" | [L3](ai-cpp-l3/) (shared memory) |
 
 ## Lesson Details
 
 | # | Lesson | Time | Prerequisites | Build Required |
 |---|--------|------|---------------|----------------|
-| L1 | SIMD & Environment | 1h | None | Docker + colcon |
-| L2 | Image Processing & Cache | 1.5h | L1 | Docker + colcon |
-| L3 | Shared Memory & IPC | 1h | L1, L4 | Docker + colcon |
-| L4 | Nanobind Framework | 1.5h | L1 | Docker + colcon |
-| L5 | Python Optimization | 1.5h | None | **None** (pure Python) |
-| L6 | Hardware Measurement | 1.5h | L4 (for C++ timer) | Docker + colcon |
-| L7 | NVIDIA GPU Programming | 1.5h | L4, L6 | Docker + colcon + CUDA (optional) |
-| L8 | Compile-Time Concepts | 1.5h | L4 | Docker + colcon |
-| L9 | Production Packaging | 1h | L4 | Docker |
-| L10 | Profiling Workflow | 1.5h | L5, L6 | **None** (pure Python) |
-| L11 | Memory Safety | 1h | L4 | Docker + colcon |
-| Cap | Capstone Project | 3-4h | All | Docker + colcon |
+| [L1](ai-cpp-l1/) | SIMD & Environment | 1h | None | Docker + colcon |
+| [L2](ai-cpp-l2/) | Image Processing & Cache | 1.5h | L1 | Docker + colcon |
+| [L3](ai-cpp-l3/) | Shared Memory & IPC | 1h | L1, L4 | Docker + colcon |
+| [L4](ai-cpp-l4/) | Nanobind Framework | 1.5h | L1 | Docker + colcon |
+| [L5](ai-cpp-l5/) | Python Optimization | 1.5h | None | **None** (pure Python) |
+| [L6](ai-cpp-l6/) | Hardware Measurement | 1.5h | L4 (for C++ timer) | Docker + colcon |
+| [L7](ai-cpp-l7/) | NVIDIA GPU Programming | 1.5h | L4, L6 | Docker + colcon + CUDA (optional) |
+| [L8](ai-cpp-l8/) | Compile-Time Concepts | 1.5h | L4 | Docker + colcon |
+| [L9](ai-cpp-l9/) | Production Packaging | 1h | L4 | Docker |
+| [L10](ai-cpp-l10/) | Profiling Workflow | 1.5h | L5, L6 | **None** (pure Python) |
+| [L11](ai-cpp-l11/) | Memory Safety | 1h | L4 | Docker + colcon |
+| [Cap](capstone/) | Capstone Project | 3-4h | All | Docker + colcon |
 
 ## Assessment
 
