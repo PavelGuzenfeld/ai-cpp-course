@@ -13,15 +13,6 @@
 [submodule "ai-cpp-l3/image-shm-dblbuf"]
 	path = ai-cpp-l3/image-shm-dblbuf
 	url = https://github.com/PavelGuzenfeld/image-shm-dblbuf
-[submodule "ai-cpp-l3/--force"]
-	path = ai-cpp-l3/--force
-	url = https://github.com/PavelGuzenfeld/double-buffer-swapper
-[submodule "exception-rt"]
-	path = exception-rt
-	url = https://github.com/PavelGuzenfeld/exception-rt
-[submodule "shm"]
-	path = shm
-	url = https://github.com/PavelGuzenfeld/shm
 [submodule "ai-cpp-l3/shm"]
 	path = ai-cpp-l3/shm
 	url = https://github.com/PavelGuzenfeld/shm
