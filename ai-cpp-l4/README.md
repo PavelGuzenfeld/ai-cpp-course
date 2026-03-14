@@ -1,8 +1,8 @@
-# Lesson 4: Nanobind Framework — Zero-Copy C++ Bindings for Python
+# Lesson 4: [Nanobind](https://github.com/wjakob/nanobind) Framework — Zero-Copy C++ Bindings for Python
 
 ## Why Nanobind Over Pybind11?
 
-In Lessons 1-3 we used pybind11 to wrap C++ code for Python. Pybind11 works, but it
+In [Lessons 1](../ai-cpp-l1/)–[3](../ai-cpp-l3/) we used [pybind11](https://github.com/pybind/pybind11) to wrap C++ code for Python. Pybind11 works, but it
 carries significant overhead that matters when you're optimizing hot paths:
 
 | Metric | pybind11 | nanobind |
@@ -12,7 +12,7 @@ carries significant overhead that matters when you're optimizing hot paths:
 | numpy interop | `py::array_t<T>` with copies | `nb::ndarray` with zero-copy views |
 | Type caster overhead | Virtual dispatch | Static dispatch |
 
-Nanobind was created by Wenzel Jakob (the original author of pybind11) as a clean-sheet
+[Nanobind](https://github.com/wjakob/nanobind) was created by Wenzel Jakob (the original author of pybind11) as a clean-sheet
 redesign. It targets Python 3.8+ and C++17+, dropping legacy compatibility in exchange
 for smaller, faster bindings.
 

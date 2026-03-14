@@ -28,7 +28,7 @@ pytest ai-cpp-l5/ -v
 
 ---
 
-## Recall: The Memory Hierarchy (from L2)
+## Recall: The Memory Hierarchy (from [L2](../ai-cpp-l2/))
 
 | Level | Latency | Size |
 |-------|---------|------|

@@ -13,7 +13,7 @@ Every time you call `.cpu()`, `.numpy()`, or `torch.from_numpy().to(device)`, yo
 
 ## tracker_engine: A Case Study in What Not to Do
 
-tracker_engine is a real-time UAV tracking system built on TensorRT. It works. It's also leaving 5-10x performance on the table because of constant CPU↔GPU data bouncing.
+tracker_engine is a real-time UAV tracking system built on [TensorRT](https://developer.nvidia.com/tensorrt). It works. It's also leaving 5-10x performance on the table because of constant CPU↔GPU data bouncing.
 
 ### Anti-pattern 1: `prepare_boxes()` — CPU-side NMS
 
@@ -246,7 +246,7 @@ GPUs are not universally faster. Avoid GPU for:
 3. **Pre-allocate everything.** Per-frame allocation is a performance antipattern.
 4. **Use pinned memory** for any host→device transfer path.
 5. **Batch your inference.** Fixed overhead × N is worse than fixed overhead × 1.
-6. **Profile before optimizing.** Use `torch.cuda.Event` for timing, `nsys` for system-level analysis.
+6. **Profile before optimizing.** Use `torch.cuda.Event` for timing (see [L6](../ai-cpp-l6/)), [`nsys`](https://developer.nvidia.com/nsight-systems) for system-level analysis.
 
 ## Build and Run
 
@@ -269,7 +269,7 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 2. Modify the pinned allocator pool size and measure the impact on sustained throughput
 3. Run `gpu_pipeline_demo.py` to see the "wrong way" vs "right way" pipeline comparison
 4. (Advanced) Add CUDA stream overlap to the GPU pipeline demo
-5. Profile with `nsys`: Run `nsys profile python3 benchmark_gpu.py` and examine the CPU/GPU timeline. Where are the gaps?
+5. Profile with [`nsys`](https://developer.nvidia.com/nsight-systems): Run `nsys profile python3 benchmark_gpu.py` and examine the CPU/GPU timeline. Where are the gaps?
 
 ## What You Learned
 

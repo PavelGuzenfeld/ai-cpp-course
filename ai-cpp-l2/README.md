@@ -108,7 +108,7 @@ Compares four approaches:
 3. **C++ unseq**: SIMD-enabled nearest-neighbor
 4. **C++ par**: Multi-threaded nearest-neighbor
 
-## OpenCV C++ Integration
+## [OpenCV](https://opencv.org/) C++ Integration
 
 OpenCV's `cv::Mat` is the C++ equivalent of a NumPy array for images:
 
@@ -124,7 +124,7 @@ Key points:
 - `ptr<uchar>(row)` returns a raw pointer to row data — no bounds checking,
   maximum speed
 
-## pybind11 NumPy Integration
+## [pybind11](https://github.com/pybind/pybind11) NumPy Integration
 
 Converting between NumPy arrays and `cv::Mat`:
 
@@ -203,7 +203,7 @@ python3 ai-cpp-l2/crop_resize.py
    touches 4 source pixels per output pixel — how does this affect cache
    behavior?
 
-4. **Profile cache misses**: Run the scalar version under `perf stat -e
+4. **Profile cache misses**: Run the scalar version under [`perf stat`](https://perf.wiki.kernel.org/) `-e
    cache-misses` (inside the Docker container) and compare row-order vs
    column-order access.
 

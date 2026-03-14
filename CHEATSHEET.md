@@ -40,7 +40,7 @@ with torch.inference_mode():   # not torch.no_grad()
     output = model(input)
 ```
 
-## Nanobind Binding Patterns
+## [Nanobind](https://github.com/wjakob/nanobind) Binding Patterns
 
 ```cpp
 #include <nanobind/nanobind.h>
@@ -160,7 +160,7 @@ void process() {
 ## Packaging
 
 ```toml
-# pyproject.toml (scikit-build-core + nanobind)
+# pyproject.toml (scikit-build-core + nanobind — see L9)
 [build-system]
 requires = ["scikit-build-core", "nanobind"]
 build-backend = "scikit_build_core.build"

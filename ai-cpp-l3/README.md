@@ -162,9 +162,9 @@ auto snapshot = shm.snapshot();  // Get current active buffer
 process(*snapshot);              // Zero-copy access to image data
 ```
 
-## nanobind for Python Bindings
+## [nanobind](https://github.com/wjakob/nanobind) for Python Bindings
 
-Lesson 3 introduces **nanobind** as the successor to pybind11 (used in L1/L2).
+Lesson 3 introduces **nanobind** as the successor to [pybind11](https://github.com/pybind/pybind11) (used in [L1](../ai-cpp-l1/)/[L2](../ai-cpp-l2/)).
 The `nanobind-example/` directory shows the basics:
 
 ```cpp
@@ -258,7 +258,7 @@ python3 ai-cpp-l3/nanobind-example/nanobind_example.py
 - `FlatType` concept prevents unsafe types from entering shared memory
 - Seqlocks provide wait-free reads for single-writer/multi-reader scenarios
 - Double buffering enables zero-copy image sharing between processes
-- nanobind is the modern successor to pybind11 (smaller, faster, zero-copy)
+- [nanobind](https://github.com/wjakob/nanobind) is the modern successor to pybind11 (smaller, faster, zero-copy) — see [L4](../ai-cpp-l4/) for the full framework lesson
 - Deterministic exception allocation makes C++ exceptions real-time safe
 
 ## Files and Submodules

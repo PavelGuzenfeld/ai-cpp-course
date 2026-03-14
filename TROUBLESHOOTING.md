@@ -94,7 +94,8 @@ cmake -DCMAKE_CXX_FLAGS="-fsanitize=address" ..
 make
 ```
 
-ASAN will print a detailed report showing exactly where the error occurred.
+[ASAN](https://clang.llvm.org/docs/AddressSanitizer.html) will print a detailed report showing exactly where the error occurred.
+See [L11](ai-cpp-l11/) for a full walkthrough of sanitizer usage.
 
 ## GPU Issues
 
@@ -153,7 +154,7 @@ g++ my_code.o -lexception-rt   # correct
 g++ -lexception-rt my_code.o   # wrong — linker hasn't seen the dependency yet
 ```
 
-### ASAN reports leaks in Python C extensions
+### [ASAN](https://clang.llvm.org/docs/AddressSanitizer.html) reports leaks in Python C extensions
 
 ASAN may report "leaks" that are actually Python's internal allocator holding
 onto pools. Suppress these with:
@@ -210,7 +211,7 @@ taskset -c 0 python3 benchmark.py
 
 In Docker, you can set `--cpuset-cpus=0` to pin the container.
 
-### "perf stat" shows zero cache misses
+### [`perf stat`](https://perf.wiki.kernel.org/) shows zero cache misses
 
 The hardware performance counters might not be available inside Docker.
 Run on the host or use `--privileged`:
@@ -222,12 +223,13 @@ perf stat python3 my_benchmark.py
 
 ## Packaging Issues
 
-### "pip install ." fails with scikit-build-core
+### "pip install ." fails with [scikit-build-core](https://github.com/scikit-build/scikit-build-core)
 
 Make sure you have the build dependencies:
 ```bash
 pip install scikit-build-core nanobind
 ```
+See [L9](ai-cpp-l9/) for full packaging details.
 
 And that your `pyproject.toml` lists them in `[build-system] requires`:
 ```toml

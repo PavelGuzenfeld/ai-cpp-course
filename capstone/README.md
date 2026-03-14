@@ -16,9 +16,9 @@ found in `tracker_engine`:
 | # | Component | Bottleneck it fixes | Key technique |
 |---|-----------|---------------------|---------------|
 | 1 | **FastKalmanFilter** | Repeated `np.eye` allocation and noise-matrix construction every predict step | Pre-allocated Eigen-style matrices; in-place updates |
-| 2 | **FastPreprocessor** | Three separate NumPy passes (cast, normalize, transpose) | Fused C++ kernel — single pass over the pixel data (Lesson 7) |
-| 3 | **FastHistoryBuffer** | `.copy()` on every `latest()` call | Circular buffer with zero-copy `numpy` views (Lesson 4) |
-| 4 | **FastStateMachine** | `if/elif` string comparisons on every frame | `std::variant`-based state machine with compile-time dispatch (Lesson 8) |
+| 2 | **FastPreprocessor** | Three separate NumPy passes (cast, normalize, transpose) | Fused C++ kernel — single pass over the pixel data ([Lesson 7](../ai-cpp-l7/)) |
+| 3 | **FastHistoryBuffer** | `.copy()` on every `latest()` call | Circular buffer with zero-copy `numpy` views ([Lesson 4](../ai-cpp-l4/)) |
+| 4 | **FastStateMachine** | `if/elif` string comparisons on every frame | `std::variant`-based state machine with compile-time dispatch ([Lesson 8](../ai-cpp-l8/)) |
 
 ## Requirements
 
@@ -83,7 +83,7 @@ progression:
 For each component:
 
 1. Write the C++ implementation under `src/`.
-2. Add pybind11 bindings.
+2. Add [pybind11](https://github.com/pybind/pybind11) bindings.
 3. Update `CMakeLists.txt` to build the new module.
 4. Write a small Python test that compares output to the baseline.
 
@@ -124,7 +124,7 @@ components and the full pipeline.
 * **90–100** — Excellent.  Production-ready code.
 * **70–89** — Good.  Minor issues but fundamentals are solid.
 * **50–69** — Needs work.  Review the relevant lessons and retry.
-* **< 50** — Revisit lessons 4–8 before reattempting.
+* **< 50** — Revisit [lessons 4](../ai-cpp-l4/)–[8](../ai-cpp-l8/) before reattempting.
 
 ---
 

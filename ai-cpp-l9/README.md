@@ -103,7 +103,7 @@ tracker_engine uses setuptools with a `pyproject.toml` that declares basic metad
 but doesn't handle compiled extensions at all — the C++ parts live outside the
 package system entirely.
 
-### scikit-build-core (modern CMake integration)
+### [scikit-build-core](https://github.com/scikit-build/scikit-build-core) (modern CMake integration)
 
 scikit-build-core bridges the gap between CMake and Python packaging. It replaces
 setuptools as the build backend and delegates all compilation to CMake:
@@ -119,14 +119,14 @@ the packaging part: finding Python, setting install paths, and creating wheels.
 
 This is what we use in this lesson.
 
-### meson-python
+### [meson-python](https://github.com/mesonbuild/meson-python)
 
-An alternative to scikit-build-core that uses Meson instead of CMake. Popular in the
+An alternative to scikit-build-core that uses [Meson](https://mesonbuild.com/) instead of CMake. Popular in the
 scientific Python ecosystem (numpy, scipy use it). If your project already uses Meson,
 meson-python is the natural choice. Otherwise, scikit-build-core is simpler for
 CMake-based projects.
 
-### nanobind's built-in scikit-build support
+### [nanobind](https://github.com/wjakob/nanobind)'s built-in scikit-build support
 
 Nanobind was designed to work with scikit-build-core from day one. The
 `nanobind_add_module()` CMake function automatically handles:
@@ -251,7 +251,7 @@ endif()
 The `SKBUILD` variable is set automatically by scikit-build-core. When it's defined,
 your `install(TARGETS ...)` destinations are relative to the Python package directory,
 not the system prefix. This is what makes `pip install .` put the `.so` in the right
-place.
+place. See also [L4](../ai-cpp-l4/) for nanobind fundamentals.
 
 ### Step 4: Version Management
 
@@ -432,7 +432,7 @@ jobs:
           path: dist/*.whl
 ```
 
-For cross-platform wheel builds, use [cibuildwheel](https://cibuildwheel.readthedocs.io/)
+For cross-platform wheel builds, use [cibuildwheel](https://cibuildwheel.pypa.io/)
 which automates building wheels for Linux, macOS, and Windows across multiple Python
 versions.
 

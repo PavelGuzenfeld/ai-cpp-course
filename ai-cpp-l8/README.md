@@ -52,7 +52,7 @@ A `FlatType` is a type that can be safely:
 - **Sent to a GPU**: No pointer chasing, contiguous bytes
 - **Serialized to disk**: What you write is what you read
 
-The safe-shm submodule in Lesson 3 already uses this concept to prevent you from putting
+The safe-shm submodule in [Lesson 3](../ai-cpp-l3/) already uses this concept to prevent you from putting
 a `std::vector` into shared memory (which would crash when another process tries to read it).
 
 ### Composing Concepts

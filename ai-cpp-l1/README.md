@@ -66,7 +66,7 @@ PYBIND11_MODULE(portable_simd_sum_vectors, m) {
 | `std::vector<int>` | Contiguous array on the heap — like a Python list but all same type |
 | `std::transform` | Applies a function to each element pair — like `map(f, a, b)` |
 | `std::execution::unseq` | Tells the compiler it can use SIMD instructions |
-| `PYBIND11_MODULE` | Creates a Python-importable `.so` from C++ |
+| `PYBIND11_MODULE` | Creates a Python-importable `.so` from C++ ([pybind11](https://github.com/pybind/pybind11)) |
 | `[](int x, int y) { return x + y; }` | Lambda — an inline anonymous function |
 
 ### `std::execution::unseq` — Portable SIMD
@@ -75,7 +75,7 @@ This execution policy is the key to SIMD without writing assembly:
 - The compiler auto-vectorizes the loop using whatever SIMD the CPU supports
 - On x86: SSE, AVX2, or AVX-512 depending on `-march=native`
 - On ARM: NEON
-- Requires linking with TBB (`-ltbb`)
+- Requires linking with [TBB](https://github.com/oneapi-src/oneTBB) (`-ltbb`)
 
 ## The Python Benchmark: `sum.py`
 
