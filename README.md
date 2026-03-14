@@ -76,6 +76,15 @@ pytest ai-cpp-l4/ -v
 pytest ai-cpp-l8/ -v
 ```
 
+## Course Resources
+
+| Document | Purpose |
+|----------|---------|
+| [SYLLABUS.md](SYLLABUS.md) | Learning paths, time estimates, prerequisites |
+| [CHEATSHEET.md](CHEATSHEET.md) | Single-page reference for all key patterns |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common mistakes and their fixes |
+| [assessment/](assessment/) | Pre/post course quiz to measure growth |
+
 ## License
 
 See [LICENSE](LICENSE) for details.
