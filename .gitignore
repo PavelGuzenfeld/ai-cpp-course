@@ -31,7 +31,7 @@
 *.out
 *.app
 
-# Biuld files
+# Build files
 build/
 
 # Install directory
@@ -42,6 +42,11 @@ log/
 
 # Python
 __pycache__/
+*.egg-info/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Images
 *.png
@@ -50,8 +55,13 @@ __pycache__/
 *.gif
 *.bmp
 
-#vscode
+# VS Code
 .vscode/
 
 # Valgrind
 vgcore.*
+
+# Profiling
+*.profraw
+*.nsys-rep
+*.qdrep
