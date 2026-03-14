@@ -6,10 +6,9 @@ on:
       - "v*"
 
 jobs:
-  release:
+  docker-release:
     runs-on: ubuntu-22.04
     permissions:
-      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
@@ -29,14 +28,6 @@ jobs:
             echo "ERROR: Tag version ($TAG_VERSION) does not match VERSION file ($FILE_VERSION)"
             exit 1
           fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          name: "v${{ steps.version.outputs.version }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image
         run: |
