@@ -582,19 +582,14 @@ the development toolchain.
 - Multi-stage Docker builds separate 3+ GB build environments from slim runtime images
 - Wheels are the standard distribution format for Python packages with compiled extensions
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `pyproject.toml` | Package configuration with scikit-build-core backend |
-| `CMakeLists.txt` | CMake build rules for the nanobind extension |
-| `VERSION` | Single source of truth for package version |
-| `src/tracker_utils/__init__.py` | Package init, imports native extension |
-| `src/tracker_utils/bbox.py` | High-level Python API wrapping C++ BBox |
-| `src/tracker_utils/_native.cpp` | C++ extension source (nanobind BBox) |
-| `src/tracker_utils/_native.pyi` | Type stubs for IDE autocomplete |
-| `src/tracker_utils/py.typed` | PEP 561 marker for typed package |
-| `Dockerfile.prod` | Multi-stage production Docker image |
-| `build_and_test.sh` | Build, test, and wheel creation script |
-| `test_package.py` | Unit tests for the package |
-| `test_integration_package.py` | Integration tests for installed package |
+| File | Description |
+|------|-------------|
+| [CMakeLists.txt](CMakeLists.txt) | CMake build rules for nanobind extension |
+| [pyproject.toml](pyproject.toml) | Package configuration with scikit-build-core |
+| [VERSION](VERSION) | Single source of truth for package version |
+| [Dockerfile.prod](Dockerfile.prod) | Multi-stage production Docker image |
+| [build_and_test.sh](build_and_test.sh) | Build, test, and wheel creation script |
+| [test_package.py](test_package.py) | Unit tests for the package |
+| [test_integration_package.py](test_integration_package.py) | Integration tests for installed package |

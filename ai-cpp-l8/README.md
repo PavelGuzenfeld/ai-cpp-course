@@ -339,15 +339,15 @@ pytest ai-cpp-l8/ -v
 4. **`if constexpr` pipeline**: Create a template image processing pipeline where each
    stage (grayscale, blur, threshold) is selected at compile time.
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `CMakeLists.txt` | Build configuration for all nanobind modules |
-| `concepts_demo.cpp` | FlatType, Numeric, ImageLike concepts with constrained templates |
-| `compile_time_lut.cpp` | constexpr LUT generation for grayscale and gamma correction |
-| `state_machine.cpp` | String-based vs variant-based state machine comparison |
-| `state_machine_slow.py` | Python string-based state machine (the "before" version) |
-| `benchmark_concepts.py` | Performance comparison across all techniques |
-| `test_concepts.py` | Unit tests for concepts, LUTs, and state machine |
-| `test_integration_concepts.py` | Integration tests simulating real tracking workloads |
+| File | Description |
+|------|-------------|
+| [concepts_demo.cpp](concepts_demo.cpp) | C++20 concepts with constrained templates |
+| [compile_time_lut.cpp](compile_time_lut.cpp) | constexpr LUT generation for image ops |
+| [state_machine.cpp](state_machine.cpp) | Variant-based vs string state machine |
+| [state_machine_slow.py](state_machine_slow.py) | Python string-based state machine |
+| [benchmark_concepts.py](benchmark_concepts.py) | Performance comparison across techniques |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
+| [test_concepts.py](test_concepts.py) | Unit tests for concepts and LUTs |
+| [test_integration_concepts.py](test_integration_concepts.py) | Integration tests for tracking workloads |

@@ -276,16 +276,17 @@ python3 ai-cpp-l6/gpu_timer.py
 - Throughput and latency are different metrics — pipelines can have high
   throughput despite high latency (Little's law)
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `CMakeLists.txt` | Build configuration for latency_timer and cache_benchmark |
-| `latency_timer.cpp` | RAII ScopedTimer with named sections, exposed via nanobind |
-| `cache_benchmark.cpp` | Sequential/random/stride access benchmarks to reveal cache hierarchy |
-| `measure_latency.py` | Python LatencyTracker with percentile computation and ASCII charts |
-| `cache_explorer.py` | Runs cache benchmarks and visualizes the results |
-| `gpu_timer.py` | torch.cuda.Event wrapper with CPU fallback |
-| `benchmark_measurement.py` | Full benchmark suite comparing all measurement methods |
-| `test_measurement.py` | Unit tests for timer accuracy and cache benchmark ordering |
-| `test_integration_measurement.py` | Integration tests for pipeline timing and boundary detection |
+| File | Description |
+|------|-------------|
+| [latency_timer.cpp](latency_timer.cpp) | RAII ScopedTimer with nanobind bindings |
+| [cache_benchmark.cpp](cache_benchmark.cpp) | Cache hierarchy access pattern benchmarks |
+| [measure_latency.py](measure_latency.py) | Python latency tracker with percentiles |
+| [cache_explorer.py](cache_explorer.py) | Cache benchmark runner and visualizer |
+| [gpu_timer.py](gpu_timer.py) | GPU timing with torch.cuda.Event wrapper |
+| [profile_pipeline.py](profile_pipeline.py) | Pipeline profiling demonstration |
+| [benchmark_measurement.py](benchmark_measurement.py) | Full measurement method benchmark suite |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
+| [test_measurement.py](test_measurement.py) | Unit tests for timer and cache benchmarks |
+| [test_integration_measurement.py](test_integration_measurement.py) | Integration tests for pipeline timing |

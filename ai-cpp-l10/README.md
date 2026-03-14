@@ -471,13 +471,12 @@ tracemalloc.stop()
 - Always profile first, always measure after
 - Know when to stop: diminishing returns are real
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `ai-cpp-l10.md` | This lesson guide |
-| `tracker_pipeline.py` | Baseline tracker pipeline with bottlenecks |
-| `tracker_pipeline_optimized.py` | Same pipeline after all optimizations |
-| `optimization_rounds.py` | Step-by-step optimization with measurements |
-| `test_optimization.py` | Unit tests verifying correctness |
-| `test_integration_optimization.py` | Integration tests with memory checks |
+| File | Description |
+|------|-------------|
+| [tracker_pipeline.py](tracker_pipeline.py) | Baseline tracker pipeline with bottlenecks |
+| [tracker_pipeline_optimized.py](tracker_pipeline_optimized.py) | Pipeline after all optimizations applied |
+| [optimization_rounds.py](optimization_rounds.py) | Step-by-step optimization with measurements |
+| [test_optimization.py](test_optimization.py) | Unit tests verifying correctness |
+| [test_integration_optimization.py](test_integration_optimization.py) | Integration tests with memory checks |

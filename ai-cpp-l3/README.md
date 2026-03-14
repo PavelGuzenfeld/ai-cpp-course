@@ -261,19 +261,6 @@ python3 ai-cpp-l3/nanobind-example/nanobind_example.py
 - [nanobind](https://github.com/wjakob/nanobind) is the modern successor to pybind11 (smaller, faster, zero-copy) — see [L4](../ai-cpp-l4/) for the full framework lesson
 - Deterministic exception allocation makes C++ exceptions real-time safe
 
-## Files and Submodules
-
-| File/Directory | Purpose |
-|----------------|---------|
-| `nanobind-example/` | Basic nanobind binding example |
-| `shm/` | POSIX shared memory RAII wrapper |
-| `safe-shm/` | Lock-free shared memory library (seqlock, cyclic buffer, double buffer) |
-| `exception-rt/` | Deterministic exception allocator for real-time |
-| `single-task-runner/` | Thread-based task execution utility |
-| `double-buffer-swapper/` | Core double-buffer swap primitive |
-| `flat-type/` | FlatType concept definition |
-| `image-shm-dblbuf/` | Image-specific shared memory double buffer |
-
 ## Dependencies
 
 ```bash
@@ -285,3 +272,16 @@ sudo apt-get install libfmt-dev
 - [nanobind documentation](https://github.com/wjakob/nanobind)
 - [nanobind example project](https://github.com/wjakob/nanobind_example)
 - [POSIX shared memory (man page)](https://man7.org/linux/man-pages/man7/shm_overview.7.html)
+
+## Lesson Files
+
+| File | Description |
+|------|-------------|
+| [shm/](shm/) | POSIX shared memory RAII wrapper |
+| [safe-shm/](safe-shm/) | Lock-free shared memory primitives |
+| [flat-type/](flat-type/) | FlatType concept definition |
+| [double-buffer-swapper/](double-buffer-swapper/) | Core double-buffer swap primitive |
+| [image-shm-dblbuf/](image-shm-dblbuf/) | Image shared memory double buffer |
+| [nanobind-example/](nanobind-example/) | Basic nanobind binding example |
+| [exception-rt/](exception-rt/) | Deterministic exception allocator for real-time |
+| [single-task-runner/](single-task-runner/) | Thread-based task execution utility |

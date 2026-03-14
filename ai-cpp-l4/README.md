@@ -179,15 +179,15 @@ pytest ai-cpp-l4/ -v
 5. **ndarray with shape constraints**: Modify `from_array()` to accept only arrays of
    exactly 4 elements. What happens when you pass an array of 5?
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `CMakeLists.txt` | Build configuration for all three nanobind modules |
-| `bbox_native.cpp` | C++ BoundingBox with nanobind bindings |
-| `bbox_slow.py` | Pure Python BoundingBox (the "before" version) |
-| `buffer_pool_native.cpp` | Zero-overhead buffer pool with ndarray |
-| `history_view_native.cpp` | Zero-copy circular buffer with view semantics |
-| `benchmark_nanobind.py` | Performance comparison: Python vs C++ |
-| `test_nanobind.py` | Unit tests for all three modules |
-| `test_integration_nanobind.py` | Integration tests simulating real workloads |
+| File | Description |
+|------|-------------|
+| [bbox_native.cpp](bbox_native.cpp) | C++ BoundingBox with nanobind bindings |
+| [buffer_pool_native.cpp](buffer_pool_native.cpp) | Zero-overhead buffer pool with ndarray |
+| [history_view_native.cpp](history_view_native.cpp) | Zero-copy circular buffer with views |
+| [bbox_slow.py](bbox_slow.py) | Pure Python BoundingBox for comparison |
+| [benchmark_nanobind.py](benchmark_nanobind.py) | Performance comparison: Python vs C++ |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
+| [test_nanobind.py](test_nanobind.py) | Unit tests for all nanobind modules |
+| [test_integration_nanobind.py](test_integration_nanobind.py) | Integration tests for real workloads |

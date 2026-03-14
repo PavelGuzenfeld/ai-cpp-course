@@ -516,14 +516,14 @@ processing thousands of detections per frame, this is significant.
 - `std::array` avoids heap allocation for fixed-size data
 - Modern C++ safety features are zero-cost — the safe code is often the fastest code
 
-## Files in This Lesson
+## Lesson Files
 
-| File | Purpose |
-|------|---------|
-| `CMakeLists.txt` | Build configuration with ASAN/UBSAN options |
-| `safe_views.cpp` | std::span usage: sum, slice, bounds checking |
-| `memory_safety_demo.cpp` | RAII, std::optional, smart pointers |
-| `asan_example.cpp` | Intentionally buggy code for ASAN demonstration |
-| `safety_demo.py` | Python demo using safe_views and memory_safety_demo |
-| `test_safety.py` | Unit tests for all safety features |
-| `test_integration_safety.py` | Integration test: tracking loop with safe types |
+| File | Description |
+|------|-------------|
+| [safe_views.cpp](safe_views.cpp) | std::span safe view operations |
+| [memory_safety_demo.cpp](memory_safety_demo.cpp) | RAII, optional, and smart pointers |
+| [asan_example.cpp](asan_example.cpp) | Intentionally buggy code for ASAN demo |
+| [safety_demo.py](safety_demo.py) | Python demo of safe views and memory safety |
+| [CMakeLists.txt](CMakeLists.txt) | CMake build with ASAN/UBSAN options |
+| [test_safety.py](test_safety.py) | Unit tests for all safety features |
+| [test_integration_safety.py](test_integration_safety.py) | Integration test with safe tracking loop |
