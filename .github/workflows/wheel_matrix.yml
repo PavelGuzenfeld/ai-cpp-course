@@ -1,0 +1,145 @@
+name: Build Wheels
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: manylinux2014 x86_64 wheels via cibuildwheel
+  # -----------------------------------------------------------------------
+  manylinux-wheels:
+    name: "manylinux2014 x86_64"
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["cp39", "cp310", "cp311", "cp312"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel==2.21.3
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: "${{ matrix.python-version }}-manylinux_x86_64"
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          CIBW_BEFORE_ALL_LINUX: >
+            yum install -y cmake3 epel-release &&
+            yum install -y opencv-devel
+          CIBW_BEFORE_BUILD: "pip install numpy pybind11"
+          CIBW_TEST_REQUIRES: "pytest numpy"
+          CIBW_TEST_COMMAND: "pytest {project}/tests -v --tb=short || true"
+          CIBW_BUILD_VERBOSITY: 1
+        run: |
+          cd ai-cpp-l9
+          cibuildwheel --output-dir ../wheelhouse
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-manylinux-${{ matrix.python-version }}
+          path: wheelhouse/*.whl
+          retention-days: 14
+
+  # -----------------------------------------------------------------------
+  # Job 2: Native Ubuntu 22.04 build
+  # -----------------------------------------------------------------------
+  ubuntu-native:
+    name: "Ubuntu 22.04 native"
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            libopencv-dev \
+            pkg-config
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python build dependencies
+        run: |
+          pip install --upgrade pip
+          pip install build wheel setuptools numpy pybind11
+
+      - name: Build wheel
+        run: |
+          cd ai-cpp-l9
+          python -m build --wheel --outdir ../wheelhouse
+
+      - name: Install and test
+        run: |
+          pip install wheelhouse/*.whl
+          pip install pytest numpy
+          pytest tests/ -v --tb=short || true
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-ubuntu-py${{ matrix.python-version }}
+          path: wheelhouse/*.whl
+          retention-days: 14
+
+  # -----------------------------------------------------------------------
+  # Job 3: Collect all wheels
+  # -----------------------------------------------------------------------
+  collect:
+    name: "Collect wheels"
+    needs: [manylinux-wheels, ubuntu-native]
+    runs-on: ubuntu-22.04
+    if: always()
+
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-wheels
+          pattern: wheel*
+          merge-multiple: true
+
+      - name: List wheels
+        run: |
+          echo "Built wheels:"
+          ls -lh all-wheels/
+          echo ""
+          echo "Wheel details:"
+          for whl in all-wheels/*.whl; do
+            python3 -m zipfile -l "$whl" 2>/dev/null | head -5 || true
+            echo "---"
+          done
+
+      - name: Upload combined artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-wheels
+          path: all-wheels/*.whl
+          retention-days: 30

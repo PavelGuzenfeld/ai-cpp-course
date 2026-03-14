@@ -1,0 +1,27 @@
+[build-system]
+requires = ["scikit-build-core>=0.5", "pybind11>=2.11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "fast-tracker-utils"
+version = "1.0.0"
+description = "High-performance tracking utilities with C++ backends"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.21",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+]
+bench = [
+    "numpy>=1.21",
+]
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+wheel.packages = ["fast_tracker_utils"]
+
+[tool.pytest.ini_options]
+testpaths = ["baseline", "solution"]
