@@ -1,0 +1,42 @@
+# Multi-stage production Dockerfile for tracker-utils
+#
+# Stage 1 (builder): Uses the full ai-cpp-course image with compilers,
+#   CMake, nanobind, and development headers to build the wheel.
+#
+# Stage 2 (runtime): Starts from python:3.10-slim and installs only
+#   the pre-built wheel. No compilers, no headers, no CMake.
+#
+# Typical size difference:
+#   builder image: ~3-5 GB (compilers, CUDA, dev headers)
+#   runtime image: ~200-400 MB (Python + your extension)
+
+# ── Stage 1: Build the wheel ───────────────────────────────────────
+FROM ai-cpp-course AS builder
+
+WORKDIR /build
+
+# Copy only files needed for the build (leverage Docker layer caching)
+COPY VERSION pyproject.toml CMakeLists.txt ./
+COPY src/ src/
+
+# Build the wheel
+RUN pip wheel . -w /wheels --no-deps \
+    && ls -lh /wheels/
+
+# ── Stage 2: Slim runtime image ────────────────────────────────────
+FROM python:3.10-slim AS runtime
+
+# Install only runtime dependencies (numpy) and the wheel
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl \
+    && rm -rf /wheels
+
+# Verify the package works
+RUN python3 -c "from tracker_utils import BBox, __version__; \
+    b = BBox(10, 20, 100, 50); \
+    print(f'tracker-utils {__version__} loaded OK'); \
+    print(f'BBox area: {b.area}')"
+
+WORKDIR /app
+
+CMD ["python3"]

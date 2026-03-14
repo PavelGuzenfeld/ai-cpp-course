@@ -1,6 +1,5 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
-#include <nanobind/stl/string.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -52,8 +51,6 @@ struct BBox
     // Return bbox as a numpy array [x, y, w, h] — zero-copy via ndarray
     [[nodiscard]] nb::ndarray<nb::numpy, double, nb::shape<4>> to_array()
     {
-        // We must copy into a new allocation that Python owns, since `this`
-        // may outlive the returned array or vice versa.
         auto* data = new double[4]{x, y, w, h};
         nb::capsule owner(data, [](void* p) noexcept { delete[] static_cast<double*>(p); });
         return nb::ndarray<nb::numpy, double, nb::shape<4>>(data, {4}, owner);
@@ -67,9 +64,10 @@ struct BBox
     }
 };
 
-NB_MODULE(bbox_native, m)
+// Module name matches the import path: tracker_utils._native
+NB_MODULE(_native, m)
 {
-    m.doc() = "C++ BoundingBox with nanobind — replaces pure-Python @property overhead";
+    m.doc() = "C++ BoundingBox with nanobind — packaged as tracker_utils._native";
 
     nb::class_<BBox>(m, "BBox")
         .def(nb::init<double, double, double, double>(),

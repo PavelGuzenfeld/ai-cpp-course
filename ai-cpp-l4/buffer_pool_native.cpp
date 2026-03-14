@@ -63,30 +63,54 @@ public:
         return nb::ndarray<nb::numpy, double>(storage_[idx].get(), 1, shape, nb::handle());
     }
 
-    /// Release a buffer back to the pool by its data pointer.
-    void release(nb::ndarray<double> arr)
+    /// Acquire a buffer and return its index (for release).
+    size_t acquire_index()
     {
         std::lock_guard<std::mutex> lock{mutex_};
 
-        const double* ptr = arr.data();
-        for (size_t i = 0; i < capacity_; ++i)
+        if (free_indices_.empty())
         {
-            if (storage_[i].get() == ptr)
+            throw std::runtime_error("buffer pool exhausted — all buffers in use");
+        }
+
+        size_t idx = free_indices_.back();
+        free_indices_.pop_back();
+        active_count_++;
+        std::memset(storage_[idx].get(), 0, buffer_size_ * sizeof(double));
+        return idx;
+    }
+
+    /// Release a buffer back to the pool by its index.
+    void release(size_t idx)
+    {
+        std::lock_guard<std::mutex> lock{mutex_};
+
+        if (idx >= capacity_)
+        {
+            throw std::out_of_range("buffer index out of range");
+        }
+
+        // Check it is not already free
+        for (size_t fi : free_indices_)
+        {
+            if (fi == idx)
             {
-                // Check it is not already free
-                for (size_t fi : free_indices_)
-                {
-                    if (fi == i)
-                    {
-                        throw std::runtime_error("buffer already released");
-                    }
-                }
-                free_indices_.push_back(i);
-                active_count_--;
-                return;
+                throw std::runtime_error("buffer already released");
             }
         }
-        throw std::runtime_error("pointer does not belong to this pool");
+        free_indices_.push_back(idx);
+        active_count_--;
+    }
+
+    /// Get a buffer by index as a numpy ndarray view.
+    nb::ndarray<nb::numpy, double> get_buffer(size_t idx)
+    {
+        if (idx >= capacity_)
+        {
+            throw std::out_of_range("buffer index out of range");
+        }
+        size_t shape[] = {buffer_size_};
+        return nb::ndarray<nb::numpy, double>(storage_[idx].get(), 1, shape, nb::handle());
     }
 
     [[nodiscard]] size_t capacity() const noexcept { return capacity_; }
@@ -112,8 +136,12 @@ NB_MODULE(buffer_pool_native, m)
              nb::arg("capacity"), nb::arg("buffer_size"))
         .def("acquire", &BufferPool::acquire,
              "Acquire a zeroed buffer from the pool as a numpy array")
-        .def("release", &BufferPool::release, nb::arg("arr"),
-             "Release a buffer back to the pool")
+        .def("acquire_index", &BufferPool::acquire_index,
+             "Acquire a buffer and return its index")
+        .def("release", &BufferPool::release, nb::arg("index"),
+             "Release a buffer back to the pool by index")
+        .def("get_buffer", &BufferPool::get_buffer, nb::arg("index"),
+             "Get buffer at index as numpy array")
         .def_prop_ro("capacity", &BufferPool::capacity)
         .def_prop_ro("buffer_size", &BufferPool::buffer_size)
         .def_prop_ro("available", &BufferPool::available)

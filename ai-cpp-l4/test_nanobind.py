@@ -148,40 +148,40 @@ class TestBufferPool:
         pool = BufferPool(capacity=2, buffer_size=16)
         assert pool.available == 2
 
-        b1 = pool.acquire()
+        idx1 = pool.acquire_index()
         assert pool.available == 1
         assert pool.active == 1
 
-        b2 = pool.acquire()
+        idx2 = pool.acquire_index()
         assert pool.available == 0
         assert pool.active == 2
 
-        pool.release(b1)
+        pool.release(idx1)
         assert pool.available == 1
         assert pool.active == 1
 
-        pool.release(b2)
+        pool.release(idx2)
         assert pool.available == 2
         assert pool.active == 0
 
     def test_exhaust_pool_raises(self):
         pool = BufferPool(capacity=1, buffer_size=8)
-        pool.acquire()
+        pool.acquire_index()
         with pytest.raises(RuntimeError, match="exhausted"):
-            pool.acquire()
+            pool.acquire_index()
 
     def test_double_release_raises(self):
         pool = BufferPool(capacity=2, buffer_size=8)
-        buf = pool.acquire()
-        pool.release(buf)
+        idx = pool.acquire_index()
+        pool.release(idx)
         with pytest.raises(RuntimeError, match="already released"):
-            pool.release(buf)
+            pool.release(idx)
 
     def test_reuse_after_release(self):
         pool = BufferPool(capacity=1, buffer_size=16)
-        b1 = pool.acquire()
-        pool.release(b1)
-        b2 = pool.acquire()
+        idx = pool.acquire_index()
+        pool.release(idx)
+        pool.acquire_index()
         # Should succeed — the single slot is reused
         assert pool.available == 0
 
