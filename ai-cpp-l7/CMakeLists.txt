@@ -6,25 +6,14 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find Python3
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
+# Find Python and nanobind
+find_package(Python3 COMPONENTS Interpreter Development)
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
+find_package(nanobind CONFIG REQUIRED HINTS /usr/local/nanobind/cmake)
+set(HAVE_NANOBIND TRUE)
 
-# Find nanobind
-execute_process(
-    COMMAND "${Python3_EXECUTABLE}" -m nanobind --cmake_dir
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    OUTPUT_VARIABLE nanobind_ROOT
-    RESULT_VARIABLE nanobind_FOUND_RESULT
-)
-
-if(nanobind_FOUND_RESULT EQUAL 0)
-    find_package(nanobind CONFIG REQUIRED PATHS ${nanobind_ROOT} NO_DEFAULT_PATH)
-    set(HAVE_NANOBIND TRUE)
-else()
-    message(WARNING "nanobind not found — Python bindings will not be built. "
-                    "Install with: pip install nanobind")
-    set(HAVE_NANOBIND FALSE)
-endif()
+# Silence warnings in nanobind headers
+include_directories(SYSTEM /usr/local/nanobind/include)
 
 # Check for CUDA
 include(CheckLanguage)
@@ -94,11 +83,11 @@ endif()
 
 if(HAVE_NANOBIND)
     install(TARGETS gpu_preprocess_cpu_ref pinned_allocator
-        LIBRARY DESTINATION "${Python3_SITEARCH}"
+        DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
     )
     if(TARGET gpu_preprocess)
         install(TARGETS gpu_preprocess
-            LIBRARY DESTINATION "${Python3_SITEARCH}"
+            DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
         )
     endif()
 endif()

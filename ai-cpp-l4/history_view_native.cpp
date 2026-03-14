@@ -34,18 +34,22 @@ public:
     }
 
     /// Push a row of data into the buffer.
-    void push(nb::ndarray<double> arr)
+    void push(nb::ndarray<nb::numpy, double, nb::ndim<1>> arr)
     {
-        if (static_cast<size_t>(arr.size()) != row_size_)
+        if (static_cast<size_t>(arr.shape(0)) != row_size_)
         {
             throw std::invalid_argument(
                 "expected row of size " + std::to_string(row_size_) +
-                ", got " + std::to_string(arr.size()));
+                ", got " + std::to_string(arr.shape(0)));
         }
 
-        const double* src = arr.data();
         double* dst = storage_.data() + (head_ * row_size_);
-        std::memcpy(dst, src, row_size_ * sizeof(double));
+        const double* src = arr.data();
+        int64_t stride = arr.stride(0);  // element stride (not bytes)
+        for (size_t i = 0; i < row_size_; ++i)
+        {
+            dst[i] = src[i * stride];
+        }
 
         head_ = (head_ + 1) % max_entries_;
         if (count_ < max_entries_)
@@ -54,12 +58,10 @@ public:
         }
     }
 
-    /// Return a VIEW of the latest `n` entries as a 2D numpy array (n x row_size).
-    /// This is zero-copy — the returned array shares memory with the ring buffer.
+    /// Return the latest `n` entries as a 2D numpy array (n x row_size).
     ///
-    /// When entries are contiguous (no wrap-around between the requested entries),
-    /// a direct view is returned. When wrap-around occurs, we must copy into a
-    /// temporary buffer so the result is contiguous (numpy requires it).
+    /// Returns a contiguous copy of the requested data. For zero-copy access
+    /// to the underlying storage, use the Python-level HistoryView wrapper.
     nb::ndarray<nb::numpy, double> latest(size_t n)
     {
         if (n == 0)
@@ -75,42 +77,27 @@ public:
             throw std::runtime_error("buffer is empty");
         }
 
-        // Calculate start index: head_ points to next-write, so the most
-        // recent entry is at (head_ - 1), and n entries back is (head_ - n).
-        size_t start;
-        if (head_ >= n)
+        size_t total = n * row_size_;
+        auto* out = new double[total];
+        nb::capsule owner(out, [](void* p) noexcept { delete[] static_cast<double*>(p); });
+
+        // Copy n rows from the circular buffer into contiguous output
+        for (size_t i = 0; i < n; ++i)
         {
-            start = head_ - n;
-        }
-        else
-        {
-            start = max_entries_ - (n - head_);
+            // Entry index: (head_ - n + i) mod max_entries_
+            size_t entry_idx;
+            if (head_ >= n)
+                entry_idx = head_ - n + i;
+            else
+                entry_idx = (max_entries_ + head_ - n + i) % max_entries_;
+
+            const double* src = storage_.data() + entry_idx * row_size_;
+            double* dst = out + i * row_size_;
+            std::memcpy(dst, src, row_size_ * sizeof(double));
         }
 
         size_t shape[] = {n, row_size_};
-        int64_t strides[] = {
-            static_cast<int64_t>(row_size_ * sizeof(double)),
-            static_cast<int64_t>(sizeof(double))
-        };
-
-        // If contiguous (no wrap), return a direct view into storage_
-        if (start + n <= max_entries_)
-        {
-            double* ptr = storage_.data() + (start * row_size_);
-            return nb::ndarray<nb::numpy, double>(ptr, 2, shape, nb::handle(), strides);
-        }
-
-        // Wrap-around: must copy into a contiguous temp buffer
-        auto* tmp = new double[n * row_size_];
-        nb::capsule owner(tmp, [](void* p) noexcept { delete[] static_cast<double*>(p); });
-
-        size_t first_chunk = max_entries_ - start;
-        std::memcpy(tmp, storage_.data() + start * row_size_,
-                    first_chunk * row_size_ * sizeof(double));
-        std::memcpy(tmp + first_chunk * row_size_, storage_.data(),
-                    (n - first_chunk) * row_size_ * sizeof(double));
-
-        return nb::ndarray<nb::numpy, double>(tmp, 2, shape, owner, strides);
+        return nb::ndarray<nb::numpy, double>(out, 2, shape, owner);
     }
 
     [[nodiscard]] size_t max_entries() const noexcept { return max_entries_; }

@@ -2,6 +2,7 @@
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
+#include <nanobind/stl/tuple.h>
 #include <chrono>
 #include <string>
 #include <unordered_map>
@@ -169,7 +170,7 @@ NB_MODULE(latency_timer, m)
         .def("elapsed_ns", &ScopedTimer::elapsed_ns, "Get elapsed time without stopping")
         .def("__enter__", &ScopedTimer::enter, nb::rv_policy::reference)
         .def("__exit__",
-             [](ScopedTimer &self, nb::handle, nb::handle, nb::handle)
+             [](ScopedTimer &self, const nb::args &)
              {
                  self.stop();
              });

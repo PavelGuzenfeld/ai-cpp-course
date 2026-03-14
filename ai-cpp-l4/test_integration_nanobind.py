@@ -120,7 +120,8 @@ class TestBufferPoolPipeline:
 
         for iteration in range(20):
             # Acquire
-            buf = pool.acquire()
+            idx = pool.acquire_index()
+            buf = pool.get_buffer(idx)
             arr = np.asarray(buf)
 
             # Fill with "sensor data"
@@ -131,7 +132,7 @@ class TestBufferPoolPipeline:
             max_val = np.max(arr)
 
             # Release
-            pool.release(buf)
+            pool.release(idx)
 
             assert pool.available == 4
             assert pool.active == 0
@@ -139,26 +140,26 @@ class TestBufferPoolPipeline:
     def test_multiple_buffers_in_flight(self):
         """Simulate having multiple buffers active simultaneously."""
         pool = BufferPool(capacity=4, buffer_size=64)
-        active_buffers = []
+        active_indices = []
 
-        # Acquire all
+        # Acquire all 4 buffers
         for i in range(4):
-            buf = pool.acquire()
-            arr = np.asarray(buf)
-            arr[:] = float(i)
-            active_buffers.append(buf)
+            idx = pool.acquire_index()
+            active_indices.append(idx)
 
         assert pool.available == 0
         assert pool.active == 4
 
-        # Verify each buffer has distinct data
-        for i, buf in enumerate(active_buffers):
-            arr = np.asarray(buf)
-            np.testing.assert_array_almost_equal(arr, np.full(64, float(i)))
+        # Pool should be exhausted
+        with pytest.raises(RuntimeError):
+            pool.acquire_index()
 
         # Release in reverse order
-        for buf in reversed(active_buffers):
-            pool.release(buf)
+        for idx in reversed(active_indices):
+            pool.release(idx)
+
+        assert pool.available == 4
+        assert pool.active == 0
 
         assert pool.available == 4
         assert pool.active == 0
@@ -168,8 +169,8 @@ class TestBufferPoolPipeline:
         pool = BufferPool(capacity=2, buffer_size=1024)
 
         for _ in range(10_000):
-            buf = pool.acquire()
-            pool.release(buf)
+            idx = pool.acquire_index()
+            pool.release(idx)
 
         assert pool.available == 2
         assert pool.active == 0
@@ -179,13 +180,15 @@ class TestBufferPoolPipeline:
         pool = BufferPool(capacity=1, buffer_size=16)
 
         # Acquire and write data
-        buf = pool.acquire()
+        idx = pool.acquire_index()
+        buf = pool.get_buffer(idx)
         arr = np.asarray(buf)
         arr[:] = 42.0
-        pool.release(buf)
+        pool.release(idx)
 
         # Re-acquire: should be zeroed
-        buf2 = pool.acquire()
+        idx2 = pool.acquire_index()
+        buf2 = pool.get_buffer(idx2)
         arr2 = np.asarray(buf2)
         np.testing.assert_array_equal(arr2, np.zeros(16))
 

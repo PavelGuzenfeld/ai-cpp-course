@@ -106,7 +106,7 @@ public:
             },
             [&](Lost& l) -> TrackerState {
                 if (detection) return Tracking{*detection};
-                if (l.frames_lost > 30) return Search{l.last_known};
+                if (l.frames_lost >= 30) return Search{l.last_known};
                 return Lost{l.frames_lost + 1, l.last_known};
             },
             [&](Search& s) -> TrackerState {
