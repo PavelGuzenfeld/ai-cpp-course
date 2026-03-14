@@ -26,16 +26,19 @@ jobs:
           python-version: "3.12"
 
       - name: Install cibuildwheel
-        run: pip install cibuildwheel==2.21.3
+        run: pip install cibuildwheel==2.22.0
 
       - name: Build wheels
         env:
           CIBW_BUILD: "${{ matrix.python-version }}-manylinux_x86_64"
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           CIBW_BEFORE_ALL_LINUX: >
-            yum install -y cmake gcc-c++ python3-devel &&
+            yum install -y cmake gcc-toolset-13-gcc-c++ fmt-devel &&
+            source /opt/rh/gcc-toolset-13/enable &&
             pip install nanobind
-          CIBW_BEFORE_BUILD: "pip install nanobind numpy"
+          CIBW_BEFORE_BUILD: "pip install nanobind numpy scikit-build-core"
+          CIBW_ENVIRONMENT: >
+            CMAKE_ARGS="-DCMAKE_CXX_STANDARD=23"
           CIBW_BUILD_VERBOSITY: 1
         run: |
           cd ai-cpp-l9
