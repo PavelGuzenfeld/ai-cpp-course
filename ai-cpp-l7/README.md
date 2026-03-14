@@ -74,6 +74,45 @@ result = correlation_tensor.clone().cpu().numpy().tolist()
 
 **Fix**: If you need a single scalar, use `.item()`. If you need a small result, use `.cpu().numpy()` (skip the clone). If you need the data for further GPU work, keep it on GPU.
 
+## CUDA Fundamentals
+
+Before diving into the tracker fixes, here are the GPU programming building blocks.
+
+### Kernels, Threads, and Grids
+
+A CUDA **kernel** is a function that runs on the GPU. The `__global__` specifier marks it as callable from CPU code:
+
+```cuda
+__global__ void vector_add(const float* a, const float* b, float* c, int n)
+{
+    int idx    = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = idx; i < n; i += stride)  // grid-stride loop
+        c[i] = a[i] + b[i];
+}
+```
+
+Key terms:
+- **Block**: a group of threads that share fast shared memory (`blockDim.x` threads)
+- **Grid**: the collection of all blocks launched for a kernel (`gridDim.x` blocks)
+- **Grid-stride loop**: each thread processes multiple elements, so a single launch handles any array size
+
+```
+Grid:  [Block 0: 256 threads] [Block 1: 256 threads] ... [Block N]
+        Thread 0..255           Thread 256..511
+```
+
+### Memory Allocation: Unified vs Explicit
+
+| Approach | Syntax | Performance | Use case |
+|----------|--------|-------------|----------|
+| **Unified Memory** | `cudaMallocManaged(&ptr, size)` | Automatic migration, simpler code | Prototyping, irregular access |
+| **Explicit + Pinned** | `cudaMalloc` + `cudaMallocHost` | Full control, optimal throughput | Production pipelines |
+
+Unified Memory uses a single pointer accessible from both CPU and GPU — the driver migrates pages automatically. It's convenient but a carefully tuned explicit pipeline with `cudaMemcpyAsync` will outperform it.
+
+See [`cuda_basics.cu`](cuda_basics.cu) for a complete comparison of both approaches with benchmarks.
+
 ## Solution 1: Fused CUDA Kernels
 
 Instead of three separate CPU operations for preprocessing, write one CUDA kernel:
@@ -229,6 +268,85 @@ with torch.cuda.amp.autocast():
 
 Half-precision is 2x faster on tensor cores and uses half the memory bandwidth.
 
+## Solution 5: CUDA IPC — Sharing GPU Memory Across Processes
+
+In [L3](../ai-cpp-l3/) you learned CPU-side IPC with POSIX shared memory. But what if both processes use the GPU? The naive approach copies data through the CPU:
+
+```
+Process A (GPU) → D2H copy → POSIX shm → H2D copy → Process B (GPU)
+         ~0.5ms        ~0µs        ~0.5ms
+```
+
+For a 4MB tensor, that's ~1ms wasted on two PCIe round-trips. **CUDA IPC eliminates both copies** by letting Process B map Process A's GPU memory directly:
+
+```
+Process A (GPU) → IPC handle → Process B (GPU)
+         0 copies, ~10µs setup
+```
+
+### How It Works
+
+1. **Producer** allocates GPU memory and gets an IPC handle:
+   ```cuda
+   float* d_data;
+   cudaMalloc(&d_data, size);
+   // ... fill d_data with a kernel ...
+
+   cudaIpcMemHandle_t handle;
+   cudaIpcGetMemHandle(&handle, d_data);
+   // Share 'handle' (64 bytes) via POSIX shm, pipe, socket, etc.
+   ```
+
+2. **Consumer** opens the handle and gets a pointer to the *same* GPU memory:
+   ```cuda
+   float* d_shared;
+   cudaIpcOpenMemHandle((void**)&d_shared, handle,
+                         cudaIpcMemLazyEnablePeerAccess);
+   // d_shared points to producer's GPU memory — zero copy!
+   ```
+
+3. **Synchronization** via IPC events prevents data races:
+   ```cuda
+   // Producer: signal data is ready
+   cudaEvent_t event;
+   cudaEventCreate(&event, cudaEventInterprocess | cudaEventDisableTimingPeer);
+   cudaEventRecord(event);
+
+   cudaIpcEventHandle_t evt_handle;
+   cudaIpcGetEventHandle(&evt_handle, event);
+   // Share evt_handle with consumer
+
+   // Consumer: wait for producer's event
+   cudaEvent_t remote_event;
+   cudaIpcOpenEventHandle(&remote_event, evt_handle);
+   cudaStreamWaitEvent(myStream, remote_event);
+   ```
+
+### Performance: IPC vs CPU Round-Trip
+
+| Data size | CUDA IPC | Pinned D2H+H2D | Pageable D2H+H2D |
+|-----------|----------|-----------------|-------------------|
+| 4 MB  | ~0.01 ms | ~0.5 ms | ~1.0 ms |
+| 16 MB | ~0.01 ms | ~2.0 ms | ~3.8 ms |
+| 64 MB | ~0.01 ms | ~7.6 ms | ~14.9 ms |
+
+CUDA IPC is effectively free — once the handle is opened, the pointer works like any device pointer. The 64MB case (a 4K RGB frame) shows a **760x speedup** over pinned copies.
+
+### When to Use CUDA IPC
+
+- **Multi-process GPU pipelines**: camera capture → preprocessing → inference → postprocessing, each in its own process for fault isolation
+- **Producer-consumer with GPU data**: one process generates GPU tensors, another consumes them
+- **Shared inference results**: multiple consumers need the same detection output without duplicating GPU memory
+
+### Limitations
+
+- Both processes must be on the **same GPU** (or use NVLink peer access)
+- The producer must keep its `cudaMalloc` alive while consumers use the handle
+- Not supported on all platforms (requires Linux with compatible driver)
+- The IPC handle is 64 bytes — it must be transmitted via some side channel (POSIX shm, socket, etc.)
+
+See [`cuda_ipc_producer.cu`](cuda_ipc_producer.cu) and [`cuda_ipc_consumer.cu`](cuda_ipc_consumer.cu) for a complete working example, and [`benchmark_cuda_ipc.py`](benchmark_cuda_ipc.py) for the PyTorch-based transfer comparison.
+
 ## When NOT to Use GPU
 
 GPUs are not universally faster. Avoid GPU for:
@@ -270,6 +388,9 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 3. Run `gpu_pipeline_demo.py` to see the "wrong way" vs "right way" pipeline comparison
 4. (Advanced) Add CUDA stream overlap to the GPU pipeline demo
 5. Profile with [`nsys`](https://developer.nvidia.com/nsight-systems): Run `nsys profile python3 benchmark_gpu.py` and examine the CPU/GPU timeline. Where are the gaps?
+6. Build and run `cuda_basics.cu` — compare unified memory vs explicit pinned memory performance
+7. Run the CUDA IPC demo: start `cuda_ipc_producer` in one terminal, `cuda_ipc_consumer` in another. Compare the IPC path vs copy-through-CPU numbers
+8. Run `benchmark_cuda_ipc.py` to see the transfer overhead comparison across data sizes
 
 ## What You Learned
 
@@ -279,11 +400,15 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 - CUDA streams enable overlapping transfers and compute
 - Batch inference amortizes fixed overhead across multiple inputs
 - Not all workloads benefit from GPU — small data, branchy code, I/O-bound work stays on CPU
+- CUDA IPC shares GPU memory across processes without CPU round-trips — essential for multi-process GPU pipelines
 
 ## Lesson Files
 
 | File | Description |
 |------|-------------|
+| [cuda_basics.cu](cuda_basics.cu) | CUDA fundamentals: grid-stride, unified vs explicit memory |
+| [cuda_ipc_producer.cu](cuda_ipc_producer.cu) | CUDA IPC producer: exports GPU memory handle |
+| [cuda_ipc_consumer.cu](cuda_ipc_consumer.cu) | CUDA IPC consumer: maps producer's GPU memory |
 | [gpu_preprocess.cu](gpu_preprocess.cu) | Fused CUDA preprocessing kernel |
 | [gpu_preprocess_cpu.cpp](gpu_preprocess_cpu.cpp) | CPU reference preprocessing implementation |
 | [pinned_allocator.cpp](pinned_allocator.cpp) | Pinned memory pool with fallback |
@@ -292,6 +417,7 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 | [gpu_pipeline_demo.py](gpu_pipeline_demo.py) | Wrong vs right GPU pipeline comparison |
 | [tracker_engine_fixes.py](tracker_engine_fixes.py) | Tracker engine GPU anti-pattern fixes |
 | [benchmark_gpu.py](benchmark_gpu.py) | CPU vs GPU performance comparison |
+| [benchmark_cuda_ipc.py](benchmark_cuda_ipc.py) | IPC vs CPU-mediated transfer benchmark |
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration with CUDA support |
 | [test_gpu.py](test_gpu.py) | Unit tests for preprocess and allocator |
 | [test_integration_gpu.py](test_integration_gpu.py) | Full pipeline and batch inference tests |
