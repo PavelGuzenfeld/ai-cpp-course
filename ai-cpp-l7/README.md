@@ -1,4 +1,8 @@
-# Lesson 7: NVIDIA GPU Programming — Keeping Data Where It Belongs
+# Lesson 7: GPU Programming — Desktop/Server (PCIe Architecture)
+
+> **Jetson developers**: This lesson covers desktop/server GPUs with discrete PCIe-attached memory.
+> If you are deploying on NVIDIA Jetson, see [Lesson 7J](../ai-cpp-l7j/) for the unified memory
+> architecture where many of these strategies change fundamentally.
 
 ## The Real Problem: PCIe Is the Bottleneck
 
@@ -109,7 +113,7 @@ Grid:  [Block 0: 256 threads] [Block 1: 256 threads] ... [Block N]
 | **Unified Memory** | `cudaMallocManaged(&ptr, size)` | Automatic migration, simpler code | Prototyping, irregular access |
 | **Explicit + Pinned** | `cudaMalloc` + `cudaMallocHost` | Full control, optimal throughput | Production pipelines |
 
-Unified Memory uses a single pointer accessible from both CPU and GPU — the driver migrates pages automatically. It's convenient but a carefully tuned explicit pipeline with `cudaMemcpyAsync` will outperform it.
+On desktop/server GPUs, unified memory triggers page faults across PCIe, so a carefully tuned explicit pipeline with `cudaMemcpyAsync` will outperform it. On Jetson, the opposite is true — see [L7J](../ai-cpp-l7j/).
 
 See [`cuda_basics.cu`](cuda_basics.cu) for a complete comparison of both approaches with benchmarks.
 

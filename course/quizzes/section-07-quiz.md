@@ -1,4 +1,4 @@
-# Section 7 Quiz: NVIDIA GPU Programming
+# Section 7 Quiz: GPU Programming — Desktop/Server
 
 ## Q1: GPU memory bandwidth is approximately 75x faster than PCIe bandwidth. What is the main implication for real-time pipelines?
 
@@ -36,14 +36,14 @@
 
 **Answer: b)** Instead of performing cast, normalize, and transpose as separate CPU numpy operations and then transferring the result to GPU, a fused kernel does all three in one GPU pass. The image goes from raw uint8 to normalized CHW float32 entirely on the GPU.
 
-## Q5: On a Jetson device with shared CPU/GPU memory, why is minimizing transfers still important even though CPU and GPU access the same physical memory?
+## Q5: Why does `cudaMallocManaged` (unified memory) perform worse than explicit `cudaMalloc` + `cudaMemcpy` on desktop GPUs?
 
-- a) It is not important -- shared memory eliminates all overhead
-- b) Even with unified memory, cache coherency protocols, memory access serialization, and the overhead of launching separate small kernels still degrade performance
-- c) Jetson devices do not support CUDA
-- d) Shared memory is slower than PCIe on Jetson
+- a) Unified memory uses less VRAM
+- b) The driver must migrate pages across PCIe on demand, causing page faults that add latency
+- c) Unified memory disables GPU caching
+- d) `cudaMallocManaged` is deprecated
 
-**Answer: b)** While Jetson's unified memory eliminates PCIe transfers, the CPU and GPU still contend for memory bandwidth, and cache coherency protocols add overhead. Fusing operations and minimizing kernel launches remains critical for meeting real-time deadlines on power-constrained hardware.
+**Answer: b)** On desktop GPUs, unified memory triggers page faults when the GPU accesses data that is on the CPU side (or vice versa). The driver migrates pages across the PCIe bus on demand, which is slower than explicitly copying data in bulk with `cudaMemcpy`. Note: on Jetson, this is not an issue because CPU and GPU share the same physical memory (see Section 7J).
 
 ## Q6: Why does batching multiple inference inputs into a single call improve GPU performance?
 

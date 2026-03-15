@@ -22,7 +22,8 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 | [L4](ai-cpp-l4/) | Nanobind Framework | Zero-copy ndarray, C++ BoundingBox, buffer pools |
 | [L5](ai-cpp-l5/) | Python Optimization | `__slots__`, numpy views, pre-allocated buffers, thread pools |
 | [L6](ai-cpp-l6/) | Hardware-Level Measurement | `perf_counter_ns`, cache benchmarks, GPU timing |
-| [L7](ai-cpp-l7/) | NVIDIA GPU Programming | Fused CUDA kernels, pinned memory, CPU-GPU pipeline |
+| [L7](ai-cpp-l7/) | GPU Programming — Desktop/Server | Fused CUDA kernels, pinned memory, CUDA IPC, PCIe optimization |
+| [L7J](ai-cpp-l7j/) | GPU Programming — Jetson/Edge | Unified memory, power modes, DLA offload, edge deployment |
 | [L8](ai-cpp-l8/) | Compile-Time Concepts | C++20 concepts, constexpr LUTs, variant state machines |
 | [L9](ai-cpp-l9/) | Going to Production | [scikit-build-core](https://github.com/scikit-build/scikit-build-core) packaging, type stubs, Docker distribution |
 | [L10](ai-cpp-l10/) | Profiling-Driven Optimization | The full workflow: profile → identify → optimize → measure |
@@ -34,8 +35,8 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 ```
 L1 SIMD ──> L2 Cache ──> L3 Shared Memory ──> L4 Nanobind
                                                     │
-L8 Concepts <── L7 GPU <── L6 Measurement <── L5 Python Opt
-    │
+L8 Concepts <── L7 GPU (Desktop) <── L6 Measurement <── L5 Python Opt
+    │           L7J GPU (Jetson)
 L9 Packaging ──> L10 Profiling Workflow ──> L11 Memory Safety
                                                     │
                                               Capstone Project
@@ -55,6 +56,10 @@ docker run -it -v $(pwd):/workspace ai-cpp-course
 # For GPU lessons (L7): build and run the GPU image
 docker build -t ai-cpp-course:gpu -f Dockerfile.gpu .
 docker run -it --gpus all -v $(pwd):/workspace ai-cpp-course:gpu
+
+# For Jetson (L7J): build on Jetson hardware
+docker build -t ai-cpp-course:jetson -f course/jetson/Dockerfile.jetson .
+docker run -it --runtime nvidia -v $(pwd):/workspace ai-cpp-course:jetson
 
 # Inside the container: build all lessons
 cd /workspace

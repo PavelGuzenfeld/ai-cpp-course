@@ -36,7 +36,7 @@ Day 2: C++ Bindings + Measurement
   L4 Nanobind (1.5h) → L6 Measurement (1.5h) → L3 Shared Memory (1h)
 
 Day 3: Advanced + Production
-  L7 GPU (1.5h) → L8 Compile-Time Concepts (1.5h) → L9 Packaging (1h)
+  L7 GPU Desktop (1.5h) or L7J GPU Jetson (1.5h) → L8 Compile-Time Concepts (1.5h) → L9 Packaging (1h)
 ```
 
 ### Path C: Complete Course (1 week)
@@ -46,7 +46,7 @@ All lessons including memory safety and capstone.
 ```
 Day 1: L1, L2, L5
 Day 2: L4, L6, L3
-Day 3: L7, L8
+Day 3: L7 or L7J (pick your hardware), L8
 Day 4: L9, L10, L11
 Day 5: Capstone project
 ```
@@ -57,7 +57,8 @@ Day 5: Capstone project
 |---------|-------|
 | "My Python loop is slow" | [L1](ai-cpp-l1/) (SIMD), [L5](ai-cpp-l5/) (Python opt) |
 | "Too many allocations per frame" | [L5](ai-cpp-l5/) (pre-alloc), [L4](ai-cpp-l4/) (C++ buffer pool) |
-| "GPU inference is slow" | [L7](ai-cpp-l7/) (fused kernels, pinned memory) |
+| "GPU inference is slow (desktop)" | [L7](ai-cpp-l7/) (fused kernels, pinned memory, CUDA IPC) |
+| "GPU inference is slow (Jetson)" | [L7J](ai-cpp-l7j/) (unified memory, power modes, DLA) |
 | "How do I measure what's slow?" | [L6](ai-cpp-l6/) (measurement), [L10](ai-cpp-l10/) (workflow) |
 | "How do I ship this to production?" | [L9](ai-cpp-l9/) (packaging) |
 | "I keep getting segfaults in C++" | [L11](ai-cpp-l11/) (memory safety) |
@@ -74,7 +75,8 @@ Day 5: Capstone project
 | [L4](ai-cpp-l4/) | Nanobind Framework | 1.5h | L1 | Docker + colcon |
 | [L5](ai-cpp-l5/) | Python Optimization | 1.5h | None | **None** (pure Python) |
 | [L6](ai-cpp-l6/) | Hardware Measurement | 1.5h | L4 (for C++ timer) | Docker + colcon |
-| [L7](ai-cpp-l7/) | NVIDIA GPU Programming | 1.5h | L4, L6 | Docker + colcon + CUDA (optional) |
+| [L7](ai-cpp-l7/) | GPU — Desktop/Server | 1.5h | L4, L6 | Docker + colcon + CUDA (optional) |
+| [L7J](ai-cpp-l7j/) | GPU — Jetson/Edge | 1.5h | L4, L6 | Jetson + JetPack 6.x |
 | [L8](ai-cpp-l8/) | Compile-Time Concepts | 1.5h | L4 | Docker + colcon |
 | [L9](ai-cpp-l9/) | Production Packaging | 1h | L4 | Docker |
 | [L10](ai-cpp-l10/) | Profiling Workflow | 1.5h | L5, L6 | **None** (pure Python) |
