@@ -346,8 +346,8 @@ def _parse_tegrastats_line(line):
                 continue
 
         # Temperature fields contain @
-        if "@" in token and ("cpu" in token.lower() or "gpu" in token.lower()
-                            or "soc" in token.lower() or "tj" in token.lower()):
+        temp_keys = ("cpu", "gpu", "soc", "tj")
+        if "@" in token and any(k in token.lower() for k in temp_keys):
             metrics[token.split("@")[0]] = token.split("@")[1] if "@" in token else token
 
         # Power fields (VDD_*)
