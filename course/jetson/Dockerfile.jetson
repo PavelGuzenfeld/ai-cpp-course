@@ -1,0 +1,121 @@
+# Jetson build environment for the ai-cpp-course.
+#
+# Base: NVIDIA L4T PyTorch image for JetPack 6 (Orin family).
+# This image includes CUDA 12.x, cuDNN, TensorRT, and PyTorch pre-built
+# for aarch64 Jetson.
+#
+# Build (on Jetson or with QEMU/buildx for aarch64):
+#   docker build -t ai-cpp-course:jetson -f Dockerfile.jetson .
+#
+# Run:
+#   docker run -it --runtime nvidia -v $(pwd):/workspace ai-cpp-course:jetson
+#
+# Note: This Dockerfile is much simpler than the main Dockerfile because
+# the L4T base image already provides CUDA, PyTorch, and a working aarch64
+# toolchain. We skip x86-specific steps: no GCC 14 from source (use apt
+# gcc-13), no mold (use system linker), and no LLVM 19 (use system clang).
+
+FROM nvcr.io/nvidia/l4t-pytorch:r36.4.0-pth2.5-py3
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# --------------------------------------------------------------------------
+# System packages
+# --------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    wget \
+    python3-dev \
+    python3-pip \
+    gcc-13 \
+    g++-13 \
+    clang \
+    libfmt-dev \
+    libtbb-dev \
+    libboost-all-dev \
+    libjsoncpp-dev \
+    nlohmann-json3-dev \
+    libopencv-dev \
+    pybind11-dev \
+    gdb \
+    valgrind \
+    ccache \
+    autoconf \
+    autoconf-archive \
+    automake \
+    libtool \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set gcc-13 as default
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60 \
+        --slave /usr/bin/g++ g++ /usr/bin/g++-13
+
+# --------------------------------------------------------------------------
+# Python packages
+# --------------------------------------------------------------------------
+RUN pip3 install --no-cache-dir \
+    meson \
+    ninja \
+    numpy \
+    opencv-python \
+    scipy \
+    pydantic \
+    pybind11 \
+    nanobind \
+    colcon-core \
+    colcon-common-extensions \
+    setuptools \
+    pytest \
+    scikit-build-core
+
+# --------------------------------------------------------------------------
+# xsimd (SIMD abstraction -- works on ARM NEON)
+# --------------------------------------------------------------------------
+RUN git clone --depth 1 https://github.com/xtensor-stack/xsimd /tmp/xsimd \
+    && cmake -S /tmp/xsimd -B /tmp/xsimd/build \
+    && cmake --build /tmp/xsimd/build --target install \
+    && rm -rf /tmp/xsimd
+
+# --------------------------------------------------------------------------
+# nanobind (install with CMake rules so find_package works)
+# --------------------------------------------------------------------------
+RUN git clone --depth 1 --recurse-submodules https://github.com/wjakob/nanobind.git /tmp/nanobind \
+    && cmake -S /tmp/nanobind -B /tmp/nanobind/build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DNB_CREATE_INSTALL_RULES=ON \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && cmake --build /tmp/nanobind/build -j$(nproc) \
+    && cmake --install /tmp/nanobind/build \
+    && rm -rf /tmp/nanobind \
+    && ln -sf /usr/local/nanobind/cmake /usr/local/lib/cmake/nanobind \
+    && ln -sf /usr/local/nanobind/include/nanobind /usr/local/include/nanobind
+
+# --------------------------------------------------------------------------
+# concurrentqueue (lock-free queue used in L3/L5)
+# --------------------------------------------------------------------------
+RUN git clone --depth 1 https://github.com/cameron314/concurrentqueue /tmp/cq \
+    && cmake -S /tmp/cq -B /tmp/cq/build \
+    && cmake --install /tmp/cq/build \
+    && rm -rf /tmp/cq
+
+# --------------------------------------------------------------------------
+# Microsoft GSL
+# --------------------------------------------------------------------------
+RUN git clone --depth 1 https://github.com/microsoft/GSL.git /tmp/GSL \
+    && cmake -S /tmp/GSL -B /tmp/GSL/build \
+    && cmake --install /tmp/GSL/build \
+    && rm -rf /tmp/GSL
+
+# --------------------------------------------------------------------------
+# SML (state machine library)
+# --------------------------------------------------------------------------
+RUN git clone --depth 1 https://github.com/boost-experimental/sml.git /tmp/sml \
+    && cmake -S /tmp/sml -B /tmp/sml/build \
+    && cmake --install /tmp/sml/build \
+    && rm -rf /tmp/sml
+
+WORKDIR /workspace
+
+CMD [ "bash" ]
