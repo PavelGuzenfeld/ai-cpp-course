@@ -2,7 +2,7 @@
 
 **Production C++ for CV/AI Python Developers**
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](VERSION)
 
 A hands-on course for computer vision and algorithm experts who use Python daily
 but need to produce production-level performance. Instead of rewriting everything
