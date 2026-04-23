@@ -50,3 +50,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".so")
 install(TARGETS ${PROJECT_NAME}
     DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
 )
+
+# --- Standalone cache-warming demo ---
+# Built as a plain executable (no pybind11); run it to see when the
+# HFT "cache warming" pattern loses at the micro-benchmark scale.
+add_executable(cache_warming_fails cache_warming_fails.cpp)
+target_compile_options(cache_warming_fails PRIVATE -O2 -std=c++23)

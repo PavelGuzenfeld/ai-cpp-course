@@ -1,0 +1,37 @@
+---
+# Drop-in clang-tidy config for tracker-engine-style projects.
+# Enables the performance-* and modernize-* checks that catch the bugs from
+# earlier lessons; turns them into build errors via WarningsAsErrors.
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  cppcoreguidelines-pro-type-member-init,
+  cppcoreguidelines-slicing,
+  misc-const-correctness,
+  misc-definitions-in-headers,
+  misc-unused-parameters,
+  misc-use-anonymous-namespace,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  performance-*,
+  readability-identifier-naming,
+  readability-redundant-*
+
+WarningsAsErrors: 'performance-*,bugprone-*,modernize-use-emplace,modernize-pass-by-value'
+
+HeaderFilterRegex: '.*'
+
+CheckOptions:
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case

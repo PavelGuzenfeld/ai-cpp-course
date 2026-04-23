@@ -190,6 +190,55 @@ source install/setup.bash
 python3 ai-cpp-l2/crop_resize.py
 ```
 
+## Cache Warming: The HFT Pattern That Usually Backfires
+
+An HFT-style pattern you will see in trading engine code: *before* the signal
+fires, pre-read the data the hot path will touch so L1/L2 already hold the
+relevant lines when the trade decision arrives. The paper by Bilokon &
+Gunduz (Imperial, 2023) reports a 90% win from this pattern.
+
+At the micro-benchmark level, **cache warming is usually a net loss**. The
+failure mode is that the warm-up itself touches far more memory than the hot
+path it is trying to speed up.
+
+Reproduce the effect with `cache_warming_fails.cpp`:
+
+```bash
+g++ -O2 -std=c++23 cache_warming_fails.cpp -o cache_warming_fails
+./cache_warming_fails
+```
+
+Typical output on a recent x86-64:
+
+```
+cold:     91,252 ns/iter   (K=65,536 random reads)
+warm:    655,255 ns/iter   (N=4,194,304 walk + K=65,536 random reads)
+ratio warm/cold = 7.18x   (warming is a NET LOSS here)
+```
+
+Warming a 16 MiB array to serve 64 KiB of random reads does **64× more
+memory traffic** than the hot path it is priming. No cache strategy survives
+that imbalance.
+
+### When cache warming actually pays
+
+Two conditions, both required:
+
+1. **The warm-up is amortised across an outer loop** — a trading engine walks
+   its order book on every market tick, so by the time a real signal fires,
+   the caches are hot as a side effect. The cost is spread across the entire
+   tick stream, not charged to each trade decision.
+2. **The hot path accesses significantly more memory than the warm-up** — the
+   formula you want is *warm_up_bytes << hot_path_bytes*. In
+   `cache_warming_fails.cpp` the ratio is backwards, which is why the pattern
+   loses.
+
+**The rule to remember:** *cache warming is a system-design pattern, not a
+function-level optimisation.* If you see it in a PR description and the
+warm-up pass is larger than the measured pass, flag it for review.
+
+---
+
 ## Exercises
 
 1. **Reverse the loop order**: Process columns instead of rows in the scalar
@@ -226,5 +275,6 @@ python3 ai-cpp-l2/crop_resize.py
 | [cpp_image_processor.cpp](cpp_image_processor.cpp) | C++ crop and resize with execution policies |
 | [crop_resize.py](crop_resize.py) | Python benchmark comparing all approaches |
 | [opencv_benchmark.py](opencv_benchmark.py) | OpenCV performance measurement script |
+| [cache_warming_fails.cpp](cache_warming_fails.cpp) | Standalone demo of the cache-warming anti-pattern |
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
 | [bmp-2048x1365.bmp](bmp-2048x1365.bmp) | Test image for benchmarking |
