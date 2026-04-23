@@ -315,6 +315,64 @@ python3 ai-cpp-l8/state_machine_slow.py
 pytest ai-cpp-l8/ -v
 ```
 
+## Canonical C++20/23 Wrappers for Compiler Builtins
+
+GCC and Clang expose hundreds of `__builtin_*` intrinsics — one-instruction
+shortcuts for things like population count, leading-zero count, byte-swap,
+and "this point in control flow is never reached." Since C++20 the standard
+library has been adding standard-name wrappers for the most useful ones, so
+the same code compiles on MSVC without a preprocessor dance.
+
+On libstdc++ and libc++, every `std::` name in the table below is a
+`constexpr` one-line wrapper around the corresponding builtin. The emitted
+assembly and the runtime are **identical**.
+
+| GCC/Clang builtin | Standard name | Header | Since |
+|---|---|---|---|
+| `__builtin_popcountll` | `std::popcount` | `<bit>` | C++20 |
+| `__builtin_clzll` | `std::countl_zero` | `<bit>` | C++20 |
+| `__builtin_ctzll` | `std::countr_zero` | `<bit>` | C++20 |
+| `__builtin_bswap64` | `std::byteswap` | `<bit>` | **C++23** |
+| `__builtin_unreachable` | `std::unreachable` | `<utility>` | **C++23** |
+| `__builtin_expect` | `[[likely]]` / `[[unlikely]]` | (attribute) | C++20 |
+| `__builtin_assume_aligned` | `std::assume_aligned<N>(ptr)` | `<memory>` | C++20 |
+| `__builtin_constant_p` | `std::is_constant_evaluated()` · `if consteval` | `<type_traits>` / lang | C++20 / C++23 |
+| `__builtin_FILE/LINE/FUNCTION` | `std::source_location::current()` | `<source_location>` | C++20 |
+| `__builtin_prefetch` | — (no standard equivalent) | — | — |
+
+`builtins_demo.cpp` and `benchmark_builtins.py` in this lesson pair up the
+most common ones and prove the wrappers run at the same speed:
+
+```
+popcount (1M 64-bit values)
+  __builtin_popcountll              72,116 ns/iter
+  std::popcount                     72,372 ns/iter
+  ratio: 1.00x  (expect ~1.0x — same instruction)
+
+byte swap (XOR-accumulate over the same 1M values)
+  __builtin_bswap64                 15,195 ns/iter
+  std::byteswap                     14,406 ns/iter
+  ratio: 1.05x  (expect ~1.0x)
+```
+
+**Rule to follow in new C++23 code:** always start with the `std::` name. Fall
+back to `__builtin_*` only if you need to compile under a standard older than
+the one that introduced the wrapper.
+
+### When there is no standard equivalent
+
+Two families still require the builtin:
+
+- `__builtin_prefetch(ptr, rw, locality)` — software prefetch hint for pointer-
+  chase loops. No standard C++ replacement; no active proposal. Use it sparingly
+  and only after measuring.
+- `[[gnu::noinline]]` / `[[gnu::always_inline]]` — function-level inlining
+  control. The C++ `inline` keyword is only a hint; there is no standard
+  anti-hint. Use the `[[gnu::...]]` attribute form (C++11 attribute syntax)
+  rather than `__attribute__((...))` for a slightly more modern spelling,
+  but it remains GCC/Clang-specific. On MSVC the equivalent is
+  `__forceinline` / `__declspec(noinline)`.
+
 ## What You Learned
 
 - C++20 concepts replace SFINAE with readable type constraints
@@ -324,6 +382,7 @@ pytest ai-cpp-l8/ -v
 - `if constexpr` eliminates dead branches at compile time — only the selected path exists
 - Strong typing with template tags prevents accidentally mixing unrelated values
 - Template dispatch resolves at compile time; virtual dispatch resolves at runtime
+- **`std::popcount`, `std::byteswap`, `std::unreachable` etc. compile to the same single instructions as the `__builtin_*` versions — use the standard names for MSVC portability**
 
 ## Exercises
 
@@ -347,6 +406,8 @@ pytest ai-cpp-l8/ -v
 | [compile_time_lut.cpp](compile_time_lut.cpp) | constexpr LUT generation for image ops |
 | [state_machine.cpp](state_machine.cpp) | Variant-based vs string state machine |
 | [state_machine_slow.py](state_machine_slow.py) | Python string-based state machine |
+| [builtins_demo.cpp](builtins_demo.cpp) | C++20/23 std:: wrappers for `__builtin_*` |
+| [benchmark_builtins.py](benchmark_builtins.py) | Proves the std:: versions match the builtins |
 | [benchmark_concepts.py](benchmark_concepts.py) | Performance comparison across techniques |
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
 | [test_concepts.py](test_concepts.py) | Unit tests for concepts and LUTs |

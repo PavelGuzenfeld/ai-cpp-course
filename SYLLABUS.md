@@ -37,6 +37,7 @@ Day 2: C++ Bindings + Measurement
 
 Day 3: Advanced + Production
   L7 GPU Desktop (1.5h) or L7J GPU Jetson (1.5h) → L8 Compile-Time Concepts (1.5h) → L9 Packaging (1h)
+  Optional: L12 Compiler Flags & clang-tidy (1h)
 ```
 
 ### Path C: Complete Course (1 week)
@@ -47,7 +48,7 @@ All lessons including memory safety and capstone.
 Day 1: L1, L2, L5
 Day 2: L4, L6, L3
 Day 3: L7 or L7J (pick your hardware), L8
-Day 4: L9, L10, L11
+Day 4: L9, L10, L11, L12
 Day 5: Capstone project
 ```
 
@@ -64,6 +65,9 @@ Day 5: Capstone project
 | "I keep getting segfaults in C++" | [L11](ai-cpp-l11/) (memory safety) |
 | "My state machine is string-based" | [L8](ai-cpp-l8/) (variant + visit) |
 | "I need inter-process communication" | [L3](ai-cpp-l3/) (shared memory) |
+| "How do I enforce perf patterns in CI?" | [L12](ai-cpp-l12/) (flags, clang-tidy, GitHub Actions) |
+| "Which compiler flags actually matter?" | [L12](ai-cpp-l12/) (-O, -march, -ffast-math) |
+| "How do I make std:: names from __builtin_*?" | [L8](ai-cpp-l8/) §Builtin Wrappers |
 
 ## Lesson Details
 
@@ -81,6 +85,7 @@ Day 5: Capstone project
 | [L9](ai-cpp-l9/) | Production Packaging | 1h | L4 | Docker |
 | [L10](ai-cpp-l10/) | Profiling Workflow | 1.5h | L5, L6 | **None** (pure Python) |
 | [L11](ai-cpp-l11/) | Memory Safety | 1h | L4 | Docker + colcon |
+| [L12](ai-cpp-l12/) | Compiler Flags & clang-tidy | 1h | L6, L8 | Docker (g++ + clang-tidy) |
 | [Cap](capstone/) | Capstone Project | 3-4h | All | Docker + colcon |
 
 ## Assessment

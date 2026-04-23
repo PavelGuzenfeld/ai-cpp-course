@@ -1,0 +1,36 @@
+# Example GitHub Actions workflow running clang-tidy on PR-touched files.
+# Copy this file to .github/workflows/clang-tidy.yml in your project root.
+
+name: clang-tidy
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # need history for `git diff origin/main...HEAD`
+
+      - name: Install clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy-19
+
+      - name: Configure CMake (produces compile_commands.json)
+        run: cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy on PR-changed files
+        run: |
+          set -euo pipefail
+          git diff --name-only --diff-filter=AM origin/main...HEAD \
+            | grep -E '\.(cpp|h|hpp)$' \
+            | tee changed.txt
+          if [[ -s changed.txt ]]; then
+            xargs -r -a changed.txt \
+              clang-tidy-19 -p build --warnings-as-errors=*
+          else
+            echo "No C++ files changed in this PR."
+          fi

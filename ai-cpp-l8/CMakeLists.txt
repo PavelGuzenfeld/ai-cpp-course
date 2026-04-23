@@ -31,3 +31,9 @@ nanobind_add_module(state_machine NB_STATIC state_machine.cpp)
 set_target_properties(state_machine PROPERTIES PREFIX "" SUFFIX ".so")
 install(TARGETS state_machine
     DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)
+
+# --- Builtins demo (C++20/23 std:: wrappers for __builtin_*) ---
+nanobind_add_module(builtins_demo NB_STATIC builtins_demo.cpp)
+set_target_properties(builtins_demo PROPERTIES PREFIX "" SUFFIX ".so")
+install(TARGETS builtins_demo
+    DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages)
