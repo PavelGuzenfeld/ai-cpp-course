@@ -5,8 +5,8 @@
 //
 // Fix each warning in place and compare your result against clean_code.cpp.
 
-#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 // 1. performance-unnecessary-value-param — `s` is only read as const-ref.
@@ -16,9 +16,9 @@ int count_a(std::string s) {
   return n;
 }
 
-// 2. performance-unnecessary-copy-initialization — `copy` copies a const ref.
-int use_copy(const std::map<int, std::string>& m) {
-  const auto copy = m.find(0)->second;  // should be: const auto& copy = ...
+// 2. performance-unnecessary-copy-initialization — `copy` copies from a const ref.
+int use_copy(const std::vector<std::string>& v) {
+  const auto copy = v[0];   // v[0] on a const vector returns const T& → copy
   return int(copy.size());
 }
 
@@ -36,7 +36,7 @@ std::vector<std::string> build_names(int k) {
   return v;
 }
 
-// 5. modernize-use-emplace — push_back with an rvalue that emplace can build.
-void add_mapping(std::map<int, std::string>& m, int key, const std::string& val) {
-  m.insert(std::pair<int, std::string>(key, val));   // → m.emplace(key, val);
+// 5. modernize-use-emplace — push_back with a temporary emplace could build.
+void add_item(std::vector<std::pair<int, std::string>>& v, int k, const std::string& s) {
+  v.push_back(std::make_pair(k, s));   // → v.emplace_back(k, s);
 }

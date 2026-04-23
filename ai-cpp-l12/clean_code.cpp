@@ -2,21 +2,21 @@
 // clang-tidy has been silenced by actually fixing the bug, not by adding
 // `NOLINT` comments.
 
-#include <map>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // 1. Pass by string_view (or const std::string&) for read-only strings.
 int count_a(std::string_view s) {
   int n = 0;
-  for (char c : s) n += (c == 'a');
+  for (const char c : s) n += (c == 'a');
   return n;
 }
 
 // 2. Bind by const reference — no copy.
-int use_copy(const std::map<int, std::string>& m) {
-  const auto& copy = m.find(0)->second;
+int use_copy(const std::vector<std::string>& v) {
+  const auto& copy = v[0];
   return int(copy.size());
 }
 
@@ -36,6 +36,6 @@ std::vector<std::string> build_names(int k) {
 }
 
 // 5. emplace in-place rather than constructing a std::pair as a temporary.
-void add_mapping(std::map<int, std::string>& m, int key, const std::string& val) {
-  m.emplace(key, val);
+void add_item(std::vector<std::pair<int, std::string>>& v, int k, const std::string& s) {
+  v.emplace_back(k, s);
 }
