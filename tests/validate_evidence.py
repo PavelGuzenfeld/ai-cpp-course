@@ -5,6 +5,7 @@ This script checks that every factual claim in the lesson markdown files
 is supported by actual code execution results.
 """
 import math
+import ctypes
 import sys
 import os
 import tracemalloc
@@ -280,6 +281,57 @@ for x in poisoned_stream:
 check("the coasting filter holds its previous state instead of writing the NaN",
       math.isfinite(coasting_mean),
       f"got {coasting_mean!r}")
+# L14: mock vendor header layout must match the real header exactly
+#
+# device_mock_native is a compiled module, not importable here. This
+# mirrors the static_assert(offsetof(...)) checks in mock_device_header.h
+# against real_device_header.h using ctypes, without needing a build.
+# =====================================================================
+print("\n--- L14: mock vs real device header layout ---")
+
+
+class _RealDeviceFrame(ctypes.Structure):
+    _fields_ = [
+        ("width", ctypes.c_uint32),
+        ("height", ctypes.c_uint32),
+        ("timestamp_ns", ctypes.c_uint64),
+        ("data", ctypes.c_uint8 * 64),
+    ]
+
+
+class _MockDeviceFrame(ctypes.Structure):
+    _fields_ = [
+        ("width", ctypes.c_uint32),
+        ("height", ctypes.c_uint32),
+        ("timestamp_ns", ctypes.c_uint64),
+        ("data", ctypes.c_uint8 * 64),
+    ]
+
+
+class _BrokenMockDeviceFrame(ctypes.Structure):
+    _fields_ = [
+        ("height", ctypes.c_uint32),  # BUG: swapped with width, matches mock_device_header_broken.h
+        ("width", ctypes.c_uint32),
+        ("timestamp_ns", ctypes.c_uint64),
+        ("data", ctypes.c_uint8 * 64),
+    ]
+
+
+def _offsets(struct_cls, names):
+    return {name: getattr(struct_cls, name).offset for name in names}
+
+
+field_names = ["width", "height", "timestamp_ns", "data"]
+real_offsets = _offsets(_RealDeviceFrame, field_names)
+mock_offsets = _offsets(_MockDeviceFrame, field_names)
+broken_offsets = _offsets(_BrokenMockDeviceFrame, field_names)
+
+check("correct mock's layout matches the real header exactly",
+      ctypes.sizeof(_MockDeviceFrame) == ctypes.sizeof(_RealDeviceFrame) and mock_offsets == real_offsets,
+      f"mock={mock_offsets}, real={real_offsets}")
+check("the swapped-field mock diverges from the real header's width/height offsets",
+      broken_offsets["width"] != real_offsets["width"],
+      f"broken={broken_offsets}, real={real_offsets}")
 
 # =====================================================================
 # Summary
