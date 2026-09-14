@@ -4,6 +4,7 @@ Evidence Validation: Verify lesson claims match actual runtime behavior.
 This script checks that every factual claim in the lesson markdown files
 is supported by actual code execution results.
 """
+import math
 import sys
 import os
 import tracemalloc
@@ -195,6 +196,62 @@ slots_sizeof = _sys.getsizeof(BboxSlots(1, 2, 3, 4))
 print(f"  BboxSlow total size: {slow_sizeof} bytes")
 print(f"  BboxSlots total size: {slots_sizeof} bytes")
 check("Slots version is smaller than dict version", slots_sizeof < slow_sizeof)
+
+# =====================================================================
+# L20: NaN poisoning and log-sum-exp underflow
+#
+# robustness_native is a compiled module, not importable here. This
+# mirrors naive_likelihood_sum/naive_normalize/log_sum_exp in pure Python
+# against the same underflow-triggering inputs.
+# =====================================================================
+print("\n--- L20: NaN poisoning and log-sum-exp underflow ---")
+
+
+def _naive_likelihood_sum(log_likelihoods):
+    return sum(math.exp(ll) for ll in log_likelihoods)
+
+
+def _log_sum_exp(log_likelihoods):
+    max_ll = max(log_likelihoods)
+    return max_ll + math.log(sum(math.exp(ll - max_ll) for ll in log_likelihoods))
+
+
+heavy_tailed_outlier = [-900.0, -910.0, -920.0]
+check("exp() of a heavy-tailed outlier's log-likelihood underflows to exactly 0.0",
+      math.exp(heavy_tailed_outlier[0]) == 0.0,
+      f"got {math.exp(heavy_tailed_outlier[0])!r}")
+check("naive_likelihood_sum on an all-underflowed input is exactly 0.0",
+      _naive_likelihood_sum(heavy_tailed_outlier) == 0.0,
+      f"got {_naive_likelihood_sum(heavy_tailed_outlier)!r}")
+
+naive_zero_div = False
+try:
+    _ = math.exp(heavy_tailed_outlier[0]) / _naive_likelihood_sum(heavy_tailed_outlier)
+except ZeroDivisionError:
+    naive_zero_div = True
+check("naive normalisation divides by the underflowed-to-zero sum",
+      naive_zero_div)
+
+log_sum_exp_result = _log_sum_exp(heavy_tailed_outlier)
+check("log-sum-exp on the same input stays finite",
+      math.isfinite(log_sum_exp_result),
+      f"got {log_sum_exp_result!r}")
+
+naive_mean = 0.0
+alpha = 0.3
+poisoned_stream = [1.0, 2.0, float("nan"), 3.0, 4.0]
+for x in poisoned_stream:
+    naive_mean = alpha * x + (1.0 - alpha) * naive_mean
+check("one NaN sample permanently poisons the naive filter's persistent state",
+      math.isnan(naive_mean))
+
+coasting_mean = 0.0
+for x in poisoned_stream:
+    if math.isfinite(x):
+        coasting_mean = alpha * x + (1.0 - alpha) * coasting_mean
+check("the coasting filter holds its previous state instead of writing the NaN",
+      math.isfinite(coasting_mean),
+      f"got {coasting_mean!r}")
 
 # =====================================================================
 # Summary
