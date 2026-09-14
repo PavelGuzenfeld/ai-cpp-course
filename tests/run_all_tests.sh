@@ -8,6 +8,14 @@ PASS=0
 FAIL=0
 SKIP=0
 
+# L3's components are submodules. Uninitialised, they are empty directories
+# that colcon skips without complaint, so say so rather than reporting a pass.
+if [ ! -f "$PROJECT_ROOT/ai-cpp-l3/shm/CMakeLists.txt" ]; then
+    echo "ERROR: ai-cpp-l3 submodules are not initialised."
+    echo "Run: git submodule update --init --recursive"
+    exit 1
+fi
+
 echo "========================================="
 echo "  ai-cpp-course Test Runner"
 echo "  All tests run inside Docker container"
