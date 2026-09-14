@@ -29,13 +29,13 @@ def main() -> None:
     v = [rng.getrandbits(64) for _ in range(1 << 16)]
 
     print("popcount (1M 64-bit values)")
-    b = measure("__builtin_popcountll",  lambda: bd.popcount_sum_builtin(v))
-    s = measure("std::popcount",         lambda: bd.popcount_sum_std(v))
+    b = measure("__builtin_popcountll", lambda: bd.popcount_sum_builtin(v))
+    s = measure("std::popcount", lambda: bd.popcount_sum_std(v))
     print(f"  ratio: {b / s:.2f}x  (expect ~1.0x — same instruction)")
 
     print("\nbyte swap (XOR-accumulate over the same 1M values)")
-    b = measure("__builtin_bswap64",     lambda: bd.bswap_xor_builtin(v))
-    s = measure("std::byteswap",         lambda: bd.bswap_xor_std(v))
+    b = measure("__builtin_bswap64", lambda: bd.bswap_xor_builtin(v))
+    s = measure("std::byteswap", lambda: bd.bswap_xor_std(v))
     print(f"  ratio: {b / s:.2f}x  (expect ~1.0x)")
 
     print("\nsingle-op dispatches (just to confirm the bindings work)")
