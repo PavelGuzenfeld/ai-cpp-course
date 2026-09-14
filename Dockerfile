@@ -46,7 +46,9 @@ RUN wget http://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.gz \
     --enable-languages=c,c++ \
     --disable-multilib \
     --program-suffix=-14.2.0 \
-    && make -j$(nproc) \
+    && make -j2 \
+    # -j2, not $(nproc): libgcc's _BitInt soft-fp files reproducibly hang CI's
+    # 4-core runner under full parallelism, apparently from memory pressure.
     && make install \
     && cd .. \
     && rm -rf gcc-14.2.0 gcc-14.2.0.tar.gz
