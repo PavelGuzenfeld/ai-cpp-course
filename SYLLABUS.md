@@ -88,6 +88,7 @@ Day 5: Capstone project
 | [L12](ai-cpp-l12/) | Compiler Flags & clang-tidy | 1h | L6, L8 | Docker (g++ + clang-tidy) |
 | [L13](ai-cpp-l13/) | Ownership of a C Handle | 1h | L4 | Docker + colcon |
 | [L14](ai-cpp-l14/) | Mocking a Vendor C API | 1h | L4 | Docker + colcon |
+| [L15](ai-cpp-l15/) | Threading and Atomics | 1.5h | L3, L4 | Docker + colcon (TSan lane optional) |
 | [L16](ai-cpp-l16/) | Zero-Copy IPC Across Processes | 1.5h | L3, L15 | Docker + colcon |
 | [L17](ai-cpp-l17/) | Falsifier-First | 1h | None | **None** (falsifier_native optional) |
 | [L20](ai-cpp-l20/) | Numerical Robustness | 1h | L4 | Docker + colcon (UBSan lane optional) |
