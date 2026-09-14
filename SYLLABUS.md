@@ -86,6 +86,7 @@ Day 5: Capstone project
 | [L10](ai-cpp-l10/) | Profiling Workflow | 1.5h | L5, L6 | **None** (pure Python) |
 | [L11](ai-cpp-l11/) | Memory Safety | 1h | L4 | Docker + colcon |
 | [L12](ai-cpp-l12/) | Compiler Flags & clang-tidy | 1h | L6, L8 | Docker (g++ + clang-tidy) |
+| [L13](ai-cpp-l13/) | Ownership of a C Handle | 1h | L4 | Docker + colcon |
 | [L14](ai-cpp-l14/) | Mocking a Vendor C API | 1h | L4 | Docker + colcon |
 | [L17](ai-cpp-l17/) | Falsifier-First | 1h | None | **None** (falsifier_native optional) |
 | [L20](ai-cpp-l20/) | Numerical Robustness | 1h | L4 | Docker + colcon (UBSan lane optional) |

@@ -332,6 +332,55 @@ check("correct mock's layout matches the real header exactly",
 check("the swapped-field mock diverges from the real header's width/height offsets",
       broken_offsets["width"] != real_offsets["width"],
       f"broken={broken_offsets}, real={real_offsets}")
+# L13: RAII ownership -- double-free is exactly-once vs more-than-once
+#
+# ownership_native is a compiled nanobind module not importable here (this
+# script runs without `source install/setup.bash`). This mirrors the same
+# create/destroy counting invariant test_ownership.py checks against the
+# real C++ RAII wrapper, in pure Python.
+# =====================================================================
+print("\n--- L13: RAII double-free counting invariant ---")
+
+
+class _MockHandle:
+    def __init__(self):
+        self.create_count = 0
+        self.destroy_count = 0
+
+    def create(self):
+        self.create_count += 1
+        return object()
+
+    def destroy(self, _handle):
+        self.destroy_count += 1
+
+
+class _Owning:
+    def __init__(self, registry, handle):
+        self._registry = registry
+        self._handle = handle
+
+    def close(self):
+        self._registry.destroy(self._handle)
+
+
+registry = _MockHandle()
+h = registry.create()
+owner = _Owning(registry, h)
+owner.close()
+check("one owning wrapper destroys its handle exactly once",
+      registry.create_count == 1 and registry.destroy_count == 1,
+      f"create={registry.create_count} destroy={registry.destroy_count}")
+
+registry2 = _MockHandle()
+h2 = registry2.create()
+first_owner = _Owning(registry2, h2)
+second_owner = _Owning(registry2, h2)  # BUG: wraps the same borrowed handle as if it owned it
+first_owner.close()
+second_owner.close()
+check("wrapping a borrowed handle as owning double-destroys it (the bug this lesson teaches)",
+      registry2.destroy_count == 2 and registry2.create_count == 1,
+      f"create={registry2.create_count} destroy={registry2.destroy_count}")
 
 # =====================================================================
 # Summary
