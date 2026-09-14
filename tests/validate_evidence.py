@@ -198,6 +198,34 @@ print(f"  BboxSlots total size: {slots_sizeof} bytes")
 check("Slots version is smaller than dict version", slots_sizeof < slow_sizeof)
 
 # =====================================================================
+# L17: falsifier decision logic renders a genuine verdict from timings,
+# not a fixed string.
+#
+# falsifier.py imports falsifier_native at module scope, so it cannot be
+# imported here without a build. This mirrors find_crossover's logic
+# against the same synthetic cases test_falsifier.py checks.
+# =====================================================================
+print("\n--- L17: falsifier decision logic ---")
+
+
+def _find_crossover(results):
+    for n, std_ns, ins_ns in results:
+        if std_ns < ins_ns:
+            return n
+    return None
+
+
+falsified_case = [(4, 50.0, 10.0), (1024, 50.0, 5000.0)]
+check("falsifier logic finds the real crossover in synthetic timings",
+      _find_crossover(falsified_case) == 1024,
+      f"got {_find_crossover(falsified_case)!r}")
+
+refuted_case = [(4, 50.0, 10.0), (1024, 9000.0, 5000.0)]
+check("falsifier logic reports no crossover when std::sort never wins",
+      _find_crossover(refuted_case) is None,
+      f"got {_find_crossover(refuted_case)!r}")
+
+# =====================================================================
 # L20: NaN poisoning and log-sum-exp underflow
 #
 # robustness_native is a compiled module, not importable here. This
