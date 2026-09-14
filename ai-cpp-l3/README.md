@@ -222,18 +222,23 @@ become real-time safe.
 
 ## Build and Run
 
+The seven libraries below are vendored directly in this lesson (not git
+submodules) so a plain `git clone` builds them with no extra init step.
+
 ```bash
 cd /workspace
 
-# Initialize submodules
-git submodule update --init --recursive
-
-# Build all lesson 3 components
-colcon build
+# Build lesson 3 (the shm round-trip module and its dependencies)
+colcon build --packages-select ai_cpp_l3 shm exception-rt flat-type \
+    double-buffer-swapper image-shm-dblbuf single-task-runner safe-shm \
+    nanobind-example
 source install/setup.bash
 
 # Run the nanobind example
 python3 ai-cpp-l3/nanobind-example/nanobind_example.py
+
+# Run the shared-memory round-trip tests (Exercise 1)
+pytest ai-cpp-l3/ -v
 ```
 
 ## Exercises
@@ -285,3 +290,6 @@ sudo apt-get install libfmt-dev
 | [nanobind-example/](nanobind-example/) | Basic nanobind binding example |
 | [exception-rt/](exception-rt/) | Deterministic exception allocator for real-time |
 | [single-task-runner/](single-task-runner/) | Thread-based task execution utility |
+| [shm_roundtrip_native.cpp](shm_roundtrip_native.cpp) | Exercise 1: `ShmWriter`/`ShmReader` nanobind module over `shm::Shm` |
+| [test_shm.py](test_shm.py) | Unit tests: in-process round-trip, segment isolation |
+| [test_integration_shm.py](test_integration_shm.py) | Integration test: round-trip across two real processes |

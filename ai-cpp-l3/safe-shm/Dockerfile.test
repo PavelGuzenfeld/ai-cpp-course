@@ -1,0 +1,23 @@
+FROM gcc:latest
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake make git libfmt-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /deps
+
+# Install exception-rt
+RUN git clone --depth 1 https://github.com/PavelGuzenfeld/exception-rt.git \
+    && cd exception-rt && mkdir build && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release -DEXCEPTION_RT_BUILD_TESTS=OFF \
+    && make -j$(nproc) && make install
+
+# Install shm (library only, skip broken test target)
+RUN git clone --depth 1 https://github.com/PavelGuzenfeld/shm.git \
+    && cd shm \
+    && sed -i '/^# Test executable/,$ d' CMakeLists.txt \
+    && mkdir build && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && make -j$(nproc) && make install
+
+WORKDIR /src

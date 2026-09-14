@@ -1,0 +1,9 @@
+safe-shm (0.1.0-1) unstable; urgency=medium
+
+  * Initial release.
+  * Lock-free seqlock, cyclic buffer, time-series queries
+  * SanitizedKey for temporal key validation
+  * OwnedShm lifecycle management
+  * Python bindings via nanobind
+
+ -- Pavel Guzenfeld <pavel@guzenfeld.dev>  Tue, 11 Mar 2026 00:00:00 +0000

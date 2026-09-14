@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ai_cpp_l3</name>
+  <version>0.1.0</version>
+  <description>Lesson 3: shared memory round-trip demo</description>
+  <maintainer email="pavelguzenfeld@gmail.com">Pavel Guzenfeld</maintainer>
+  <license>MIT</license>
+  <build_depend>libfmt-dev</build_depend>
+  <depend>shm</depend>
+  <depend>exception-rt</depend>
+</package>

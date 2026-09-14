@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>shm</name>
+  <version>0.1.0</version>
+  <description>Cmake library</description>
+  <maintainer email="pavelguzenfeld@gmail.com">Pavel Guzenfeld</maintainer>
+  <license>MIT</license>
+  <build_depend>libfmt-dev</build_depend>
+  <depend>exception-rt</depend>
+</package>

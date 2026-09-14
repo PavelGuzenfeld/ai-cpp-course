@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>exception-rt</name>
+  <version>0.0.1</version>
+  <description>Exception allocation override with predictable static storage</description>
+  <maintainer email="maintainer@exception-rt">Pavel Guzenfeld</maintainer>
+  <license>MIT</license>
+</package>

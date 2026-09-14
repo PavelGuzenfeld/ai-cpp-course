@@ -1,0 +1,12 @@
+[submodule "ext/flat-type"]
+	path = ext/flat-type
+	url = https://github.com/PavelGuzenfeld/flat-type
+[submodule "ext/double-buffer-swapper"]
+	path = ext/double-buffer-swapper
+	url = https://github.com/PavelGuzenfeld/double-buffer-swapper
+[submodule "ext/exception-rt"]
+	path = ext/exception-rt
+	url = https://github.com/PavelGuzenfeld/exception-rt
+[submodule "ext/single-task-runner"]
+	path = ext/single-task-runner
+	url = https://github.com/PavelGuzenfeld/single-task-runner

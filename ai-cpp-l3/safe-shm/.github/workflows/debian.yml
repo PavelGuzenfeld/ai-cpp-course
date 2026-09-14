@@ -1,0 +1,71 @@
+name: Build Debian Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    strategy:
+      matrix:
+        include:
+          - distro: jammy
+            image: ubuntu:22.04
+            extra_ppa: true
+          - distro: noble
+            image: ubuntu:24.04
+            extra_ppa: false
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    env:
+      CC: gcc-13
+      CXX: g++-13
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake g++ libfmt-dev debhelper devscripts git \
+            ca-certificates software-properties-common
+          if [ "${{ matrix.extra_ppa }}" = "true" ]; then
+            add-apt-repository -y ppa:ubuntu-toolchain-r/test
+            apt-get update
+          fi
+          apt-get install -y --no-install-recommends g++-13
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install exception-rt
+        run: |
+          git clone --depth 1 https://github.com/PavelGuzenfeld/exception-rt.git /tmp/exception-rt
+          cmake -S /tmp/exception-rt -B /tmp/exception-rt/build \
+            -DCMAKE_BUILD_TYPE=Release -DEXCEPTION_RT_BUILD_TESTS=OFF
+          cmake --build /tmp/exception-rt/build -j$(nproc)
+          cmake --install /tmp/exception-rt/build
+
+      - name: Install shm
+        run: |
+          git clone --depth 1 https://github.com/PavelGuzenfeld/shm.git /tmp/shm
+          sed -i '/^# Test executable/,$ d' /tmp/shm/CMakeLists.txt
+          cmake -S /tmp/shm -B /tmp/shm/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/shm/build -j$(nproc)
+          cmake --install /tmp/shm/build
+
+      - name: Build .deb package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Collect .deb artifacts
+        run: |
+          mkdir -p debian-artifacts
+          cp ../*.deb debian-artifacts/
+          ls -la debian-artifacts/
+
+      - name: Upload .deb artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: safe-shm-${{ matrix.distro }}
+          path: debian-artifacts/*.deb

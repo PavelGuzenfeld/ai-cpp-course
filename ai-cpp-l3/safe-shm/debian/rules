@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DSANITIZER=none \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DSAFE_SHM_BUILD_TESTS=OFF
+
+override_dh_auto_test:
+	@echo "Skipping tests for header-only dev package"

@@ -44,6 +44,9 @@ if [ -f "$PROJECT_ROOT/install/setup.bash" ]; then
     source "$PROJECT_ROOT/install/setup.bash"
 fi
 
+run_test "L3 Shared Memory" \
+    "pytest $PROJECT_ROOT/ai-cpp-l3/ -v"
+
 run_test "L4 Nanobind" \
     "pytest $PROJECT_ROOT/ai-cpp-l4/ -v"
 

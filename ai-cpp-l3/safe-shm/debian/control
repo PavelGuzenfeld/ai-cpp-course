@@ -1,0 +1,18 @@
+Source: safe-shm
+Section: libs
+Priority: optional
+Maintainer: Pavel Guzenfeld <pavel@guzenfeld.dev>
+Build-Depends: debhelper-compat (= 13), build-essential, cmake (>= 3.20), g++ (>= 13), libfmt-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/PavelGuzenfeld/safe-shm
+
+Package: libsafe-shm-dev
+Section: libdevel
+Architecture: any
+Depends: ${misc:Depends}, libfmt-dev
+Description: Lock-free shared memory primitives - development files
+ Header-only C++23 library providing seqlock, cyclic ring buffer,
+ time-series temporal queries, and lifecycle management over POSIX
+ shared memory. Uses per-slot seqlocks, Linux futex, and std::atomic_ref.
+ .
+ This package contains the header files for development.

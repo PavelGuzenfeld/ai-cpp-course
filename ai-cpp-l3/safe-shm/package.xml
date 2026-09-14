@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>safe-shm</name>
+  <version>1.0.0</version>
+  <description>Thread-safe shared memory with double-buffered loading</description>
+  <maintainer email="pavelguzenfeld@gmail.com">Pavel Guzenfeld</maintainer>
+  <license>MIT</license>
+  <build_depend>libfmt-dev</build_depend>
+  <depend>shm</depend>
+  <depend>exception-rt</depend>
+</package>

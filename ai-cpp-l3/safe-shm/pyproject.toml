@@ -1,0 +1,30 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "safe-shm"
+version = "0.1.0"
+description = "Lock-free shared memory primitives for real-time C++ and Python"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [{name = "Pavel Guzenfeld"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Hardware",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://github.com/PavelGuzenfeld/safe-shm"
+Repository = "https://github.com/PavelGuzenfeld/safe-shm"
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+cmake.args = ["-DSANITIZER=none", "-DSAFE_SHM_BUILD_TESTS=OFF"]
+wheel.packages = []

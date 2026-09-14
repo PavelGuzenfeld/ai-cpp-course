@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.compiler }} / ${{ matrix.sanitizer }} / ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # x86_64
+          - compiler: gcc-13
+            cc: gcc-13
+            cxx: g++-13
+            sanitizer: asan
+            arch: x86_64
+            runner: ubuntu-latest
+          - compiler: gcc-13
+            cc: gcc-13
+            cxx: g++-13
+            sanitizer: tsan
+            arch: x86_64
+            runner: ubuntu-latest
+          - compiler: gcc-13
+            cc: gcc-13
+            cxx: g++-13
+            sanitizer: none
+            arch: x86_64
+            runner: ubuntu-latest
+          - compiler: clang-18
+            cc: clang-18
+            cxx: clang++-18
+            sanitizer: asan
+            arch: x86_64
+            runner: ubuntu-latest
+          - compiler: clang-18
+            cc: clang-18
+            cxx: clang++-18
+            sanitizer: tsan
+            arch: x86_64
+            runner: ubuntu-latest
+          - compiler: clang-18
+            cc: clang-18
+            cxx: clang++-18
+            sanitizer: none
+            arch: x86_64
+            runner: ubuntu-latest
+          # ARM64
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+            sanitizer: none
+            arch: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install compiler and system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ${{ matrix.cc }} ${{ matrix.cxx }} \
+            cmake make git libfmt-dev
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: /usr/local
+          key: deps-${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-v1
+
+      - name: Build and install exception-rt
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          git clone --depth 1 https://github.com/PavelGuzenfeld/exception-rt.git /tmp/exception-rt
+          cmake -S /tmp/exception-rt -B /tmp/exception-rt/build \
+            -DCMAKE_BUILD_TYPE=Release -DEXCEPTION_RT_BUILD_TESTS=OFF
+          cmake --build /tmp/exception-rt/build -j$(nproc)
+          sudo cmake --install /tmp/exception-rt/build
+
+      - name: Build and install shm
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          git clone --depth 1 https://github.com/PavelGuzenfeld/shm.git /tmp/shm
+          sed -i '/^# Test executable/,$ d' /tmp/shm/CMakeLists.txt
+          cmake -S /tmp/shm -B /tmp/shm/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/shm/build -j$(nproc)
+          sudo cmake --install /tmp/shm/build
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DSANITIZER=${{ matrix.sanitizer }}
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run benchmarks
+        if: matrix.sanitizer == 'none'
+        run: |
+          ./build/benchmark
+          ./build/benchmark_competitors
+
+  fuzz:
+    name: fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 cmake make git libfmt-dev
+
+      - name: Cache dependencies (fuzz)
+        id: cache-deps-fuzz
+        uses: actions/cache@v4
+        with:
+          path: /usr/local
+          key: deps-${{ runner.os }}-clang-18-v1
+
+      - name: Build and install exception-rt
+        if: steps.cache-deps-fuzz.outputs.cache-hit != 'true'
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          git clone --depth 1 https://github.com/PavelGuzenfeld/exception-rt.git /tmp/exception-rt
+          cmake -S /tmp/exception-rt -B /tmp/exception-rt/build \
+            -DCMAKE_BUILD_TYPE=Release -DEXCEPTION_RT_BUILD_TESTS=OFF
+          cmake --build /tmp/exception-rt/build -j$(nproc)
+          sudo cmake --install /tmp/exception-rt/build
+
+      - name: Build and install shm
+        if: steps.cache-deps-fuzz.outputs.cache-hit != 'true'
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          git clone --depth 1 https://github.com/PavelGuzenfeld/shm.git /tmp/shm
+          sed -i '/^# Test executable/,$ d' /tmp/shm/CMakeLists.txt
+          cmake -S /tmp/shm -B /tmp/shm/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/shm/build -j$(nproc)
+          sudo cmake --install /tmp/shm/build
+
+      - name: Configure fuzz build
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DSANITIZER=fuzzer
+
+      - name: Build fuzz targets
+        run: cmake --build build --target fuzz_cyclic_buffer fuzz_time_series -j$(nproc)
+
+      - name: Run fuzzers (30s each)
+        run: |
+          mkdir -p build/corpus
+          ./build/fuzz_cyclic_buffer build/corpus -max_total_time=30
+          ./build/fuzz_time_series build/corpus -max_total_time=30
