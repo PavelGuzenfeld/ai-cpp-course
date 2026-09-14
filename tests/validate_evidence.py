@@ -9,6 +9,8 @@ import ctypes
 import socket
 import sys
 import os
+import threading
+import time
 import tracemalloc
 from multiprocessing import shared_memory
 
@@ -405,6 +407,93 @@ try:
 finally:
     _shm.close()
     _shm.unlink()
+# L15: publish-before-write is a real, observable ordering bug, and the
+# GIL genuinely serializes pure-Python CPU-bound threads.
+#
+# concurrency_native is a compiled module, not importable here. These are
+# real threading.Thread runs (not a mirror of the C++), demonstrating the
+# same two claims the lesson makes: get the publish order wrong and a
+# reader can observe a torn value, and pure-Python threads don't get
+# concurrency from the interpreter the way GIL-released C++ code does.
+# =====================================================================
+print("\n--- L15: publish ordering and the GIL ---")
+
+
+def _correct_publish_race():
+    slot = {"value": None}
+    published = threading.Event()
+    read_value = {}
+
+    def producer():
+        slot["value"] = 42
+        published.set()
+
+    def consumer():
+        published.wait()
+        read_value["value"] = slot["value"]
+
+    t_c, t_p = threading.Thread(target=consumer), threading.Thread(target=producer)
+    t_c.start()
+    t_p.start()
+    t_p.join()
+    t_c.join()
+    return read_value["value"]
+
+
+def _broken_publish_race():
+    slot = {"value": None}
+    published = threading.Event()
+    read_value = {}
+
+    def producer():
+        published.set()  # BUG: published before the write, same as BrokenSpscRing
+        time.sleep(0.02)
+        slot["value"] = 42
+
+    def consumer():
+        published.wait()
+        read_value["value"] = slot["value"]  # races the producer's write
+
+    t_c, t_p = threading.Thread(target=consumer), threading.Thread(target=producer)
+    t_c.start()
+    t_p.start()
+    t_p.join()
+    t_c.join()
+    return read_value["value"]
+
+
+check("publishing after the write always delivers the committed value",
+      _correct_publish_race() == 42,
+      f"got {_correct_publish_race()!r}")
+check("publishing before the write lets a reader observe a torn value",
+      _broken_publish_race() != 42,
+      f"got {_broken_publish_race()!r}")
+
+
+def _cpu_bound_work(n):
+    total = 0
+    for i in range(n):
+        total += i * i
+    return total
+
+
+n_iters = 1_000_000
+t0 = time.perf_counter()
+_cpu_bound_work(n_iters)
+_cpu_bound_work(n_iters)
+sequential_time = time.perf_counter() - t0
+
+t0 = time.perf_counter()
+threads = [threading.Thread(target=_cpu_bound_work, args=(n_iters,)) for _ in range(2)]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+threaded_time = time.perf_counter() - t0
+
+check("the GIL serializes pure-Python CPU-bound threads (no speedup from threading)",
+      threaded_time > 0.85 * sequential_time,
+      f"sequential={sequential_time:.3f}s threaded={threaded_time:.3f}s")
 
 # =====================================================================
 # Summary

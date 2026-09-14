@@ -30,6 +30,7 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 | [L11](ai-cpp-l11/) | Memory Safety Without Sacrifice | `std::span`, `std::optional`, [ASAN](https://clang.llvm.org/docs/AddressSanitizer.html)/[UBSAN](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html), smart pointers |
 | [L13](ai-cpp-l13/) | Ownership of a C Handle | RAII, move-only types, `= delete` copy, `release()`, the borrowed-pointer double-free |
 | [L14](ai-cpp-l14/) | Mocking a Vendor C API | Layout-exact mocks, `static_assert(offsetof(...))`, skip-vs-stub, one impl/two headers |
+| [L15](ai-cpp-l15/) | Threading and Atomics | `std::atomic`, memory_order, SPSC ring, `nb::gil_scoped_release`, TSan |
 | [L16](ai-cpp-l16/) | Zero-Copy IPC Across Processes | `SCM_RIGHTS` fd passing, shared pages, copy-vs-zero-copy benchmark |
 | [L17](ai-cpp-l17/) | Falsifier-First | Kill criteria, cheapest disconfirming experiment first, verdict docs |
 | [L20](ai-cpp-l20/) | Numerical Robustness in Stateful Pipelines | NaN poisoning, coast-don't-update, log-sum-exp, `assert` under `NDEBUG`, UBSan |
