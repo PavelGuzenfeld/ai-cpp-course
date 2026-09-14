@@ -61,12 +61,15 @@ RUN git clone https://github.com/rui314/mold.git \
     && cd .. \
     && rm -rf mold
 
-RUN wget https://apt.llvm.org/llvm.sh \
-    && chmod u+x llvm.sh \
-    && ./llvm.sh 19 \
+RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+    && echo "deb https://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main" > /etc/apt/sources.list.d/llvm.list \
+    # llvm.sh's own distro-version check rejects point releases like
+    # 22.04.5 that postdate the script; add the known-good jammy repo directly.
+    && apt-get update \
+    && apt-get install -y clang-19 \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100 \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100 \
-    && rm llvm.sh
+    && rm -rf /var/lib/apt/lists/*
 
 # Install xsimd  - generic SIMD types and functions for C++
 RUN git clone https://github.com/xtensor-stack/xsimd \
