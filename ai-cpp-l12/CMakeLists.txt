@@ -35,4 +35,7 @@ target_compile_options(poly_fast PRIVATE -O3 -ffast-math -march=x86-64-v3)
 
 # --- Tidy exercise: build only the cleaned code.  Building dirty_code with
 # clang-tidy enabled should fail — that is the point of the exercise.
-add_executable(clean_demo clean_code.cpp)
+# clean_code.cpp has no main() (it's a set of functions for clang-tidy to
+# scan, not a program to run), so this must be an OBJECT library, not an
+# executable -- add_executable fails to link on every default build.
+add_library(clean_demo OBJECT clean_code.cpp)
