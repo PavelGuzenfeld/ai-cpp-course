@@ -49,6 +49,11 @@ L9 Packaging ──> L10 Profiling Workflow ──> L11 Memory Safety
 Everything runs inside Docker -- no environment pollution.
 
 ```bash
+# Clone. L3's seven components are submodules -- without --recurse-submodules
+# those directories come out empty and L3 builds nothing.
+git clone --recurse-submodules https://github.com/PavelGuzenfeld/ai-cpp-course
+cd ai-cpp-course
+
 # Build the development image
 docker build -t ai-cpp-course -f Dockerfile .
 

@@ -225,7 +225,8 @@ become real-time safe.
 ```bash
 cd /workspace
 
-# Initialize submodules
+# Required if you cloned without --recurse-submodules. Without it, the seven
+# submodule directories below are empty and colcon finds nothing to build.
 git submodule update --init --recursive
 
 # Build all lesson 3 components
@@ -275,13 +276,18 @@ sudo apt-get install libfmt-dev
 
 ## Lesson Files
 
+Seven of these are git submodules -- separate repositories, not copies. If
+the directory is empty you cloned without `--recurse-submodules`; see
+[Build and Run](#build-and-run). Fixes land in the upstream repo and reach
+this lesson when the submodule pointer is bumped.
+
 | File | Description |
 |------|-------------|
-| [shm/](shm/) | POSIX shared memory RAII wrapper |
-| [safe-shm/](safe-shm/) | Lock-free shared memory primitives |
-| [flat-type/](flat-type/) | FlatType concept definition |
-| [double-buffer-swapper/](double-buffer-swapper/) | Core double-buffer swap primitive |
-| [image-shm-dblbuf/](image-shm-dblbuf/) | Image shared memory double buffer |
-| [nanobind-example/](nanobind-example/) | Basic nanobind binding example |
-| [exception-rt/](exception-rt/) | Deterministic exception allocator for real-time |
-| [single-task-runner/](single-task-runner/) | Thread-based task execution utility |
+| [shm/](shm/) | submodule ([repo](https://github.com/PavelGuzenfeld/shm)) — POSIX shared memory RAII wrapper |
+| [safe-shm/](safe-shm/) | submodule ([repo](https://github.com/PavelGuzenfeld/safe-shm)) — lock-free shared memory primitives |
+| [flat-type/](flat-type/) | submodule ([repo](https://github.com/PavelGuzenfeld/flat-type)) — FlatType concept definition |
+| [double-buffer-swapper/](double-buffer-swapper/) | submodule ([repo](https://github.com/PavelGuzenfeld/double-buffer-swapper)) — core double-buffer swap primitive |
+| [image-shm-dblbuf/](image-shm-dblbuf/) | submodule ([repo](https://github.com/PavelGuzenfeld/image-shm-dblbuf)) — image shared memory double buffer |
+| [exception-rt/](exception-rt/) | submodule ([repo](https://github.com/PavelGuzenfeld/exception-rt)) — deterministic exception allocator for real-time |
+| [single-task-runner/](single-task-runner/) | submodule ([repo](https://github.com/PavelGuzenfeld/single-task-runner)) — thread-based task execution utility |
+| [nanobind-example/](nanobind-example/) | in-tree — basic nanobind binding example |
