@@ -28,6 +28,7 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 | [L9](ai-cpp-l9/) | Going to Production | [scikit-build-core](https://github.com/scikit-build/scikit-build-core) packaging, type stubs, Docker distribution |
 | [L10](ai-cpp-l10/) | Profiling-Driven Optimization | The full workflow: profile → identify → optimize → measure |
 | [L11](ai-cpp-l11/) | Memory Safety Without Sacrifice | `std::span`, `std::optional`, [ASAN](https://clang.llvm.org/docs/AddressSanitizer.html)/[UBSAN](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html), smart pointers |
+| [L17](ai-cpp-l17/) | Falsifier-First | Kill criteria, cheapest disconfirming experiment first, verdict docs |
 | [L20](ai-cpp-l20/) | Numerical Robustness in Stateful Pipelines | NaN poisoning, coast-don't-update, log-sum-exp, `assert` under `NDEBUG`, UBSan |
 | [**Capstone**](capstone/) | **Build a Fast Tracker** | **Reimplement tracker_engine bottlenecks, package as pip library** |
 
