@@ -235,6 +235,10 @@ source install/setup.bash
 
 # Run the nanobind example
 python3 ai-cpp-l3/nanobind-example/nanobind_example.py
+
+# Round-trip demo: write a struct through shm, read it back
+colcon build --packages-select ai_cpp_l3
+PYTHONPATH=ai-cpp-l3 pytest ai-cpp-l3/test_shm.py ai-cpp-l3/test_integration_shm.py -v
 ```
 
 ## Exercises
@@ -291,3 +295,6 @@ this lesson when the submodule pointer is bumped.
 | [exception-rt/](exception-rt/) | submodule ([repo](https://github.com/PavelGuzenfeld/exception-rt)) — deterministic exception allocator for real-time |
 | [single-task-runner/](single-task-runner/) | submodule ([repo](https://github.com/PavelGuzenfeld/single-task-runner)) — thread-based task execution utility |
 | [nanobind-example/](nanobind-example/) | in-tree — basic nanobind binding example |
+| [roundtrip/](roundtrip/) | in-tree — `ShmWriter`/`ShmReader` over `shm::Shm`, the `ai_cpp_l3` colcon package |
+| [test_shm.py](test_shm.py) | in-process round-trip, segment isolation, re-open preserves data |
+| [test_integration_shm.py](test_integration_shm.py) | writer and reader as separate processes, through `/dev/shm` |

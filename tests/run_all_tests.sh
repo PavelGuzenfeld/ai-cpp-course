@@ -52,6 +52,9 @@ if [ -f "$PROJECT_ROOT/install/setup.bash" ]; then
     source "$PROJECT_ROOT/install/setup.bash"
 fi
 
+run_test "L3 Shared Memory" \
+    "PYTHONPATH=$PROJECT_ROOT/ai-cpp-l3 pytest $PROJECT_ROOT/ai-cpp-l3/test_shm.py $PROJECT_ROOT/ai-cpp-l3/test_integration_shm.py -v"
+
 run_test "L4 Nanobind" \
     "pytest $PROJECT_ROOT/ai-cpp-l4/ -v"
 
