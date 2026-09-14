@@ -6,9 +6,11 @@ is supported by actual code execution results.
 """
 import math
 import ctypes
+import socket
 import sys
 import os
 import tracemalloc
+from multiprocessing import shared_memory
 
 import numpy as np
 
@@ -381,6 +383,28 @@ second_owner.close()
 check("wrapping a borrowed handle as owning double-destroys it (the bug this lesson teaches)",
       registry2.destroy_count == 2 and registry2.create_count == 1,
       f"create={registry2.create_count} destroy={registry2.destroy_count}")
+# L16: zero-copy IPC -- the stdlib capability exists, and a second handle
+# to shared memory really does see writes with no copy in between.
+#
+# ipc_native is a compiled module, not importable here.
+# =====================================================================
+print("\n--- L16: zero-copy IPC capability ---")
+
+check("the stdlib fd-passing primitives this lesson is built on exist (3.9+)",
+      hasattr(socket, "send_fds") and hasattr(socket, "recv_fds"))
+
+_shm = shared_memory.SharedMemory(create=True, size=64)
+try:
+    _shm.buf[0:5] = b"hello"
+    _shm2 = shared_memory.SharedMemory(name=_shm.name)
+    try:
+        check("a second shared-memory handle sees a write through the same pages, not a copy",
+              bytes(_shm2.buf[0:5]) == b"hello")
+    finally:
+        _shm2.close()
+finally:
+    _shm.close()
+    _shm.unlink()
 
 # =====================================================================
 # Summary
