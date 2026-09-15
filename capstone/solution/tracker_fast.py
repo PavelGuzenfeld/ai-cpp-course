@@ -22,7 +22,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 
 try:
-    from fast_tracker_utils._native import (
+    from fast_tracker_utils import (
         kalman_native,
         preprocess_native,
         history_native,
@@ -38,19 +38,26 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 class FastKalmanFilter:
-    """Kalman filter with pre-allocated matrices (no per-frame allocation).
-
-    Key optimisations (from Lesson 5):
-    - Transition matrix F is built once in __init__.
-    - Noise matrices Q, R, H are pre-allocated.
-    - All temporaries (S, K, y) are pre-allocated buffers.
-    - Operations are done in-place where possible.
+    """Kalman filter delegating to kalman_native's pre-allocated C++
+    implementation when available (Lesson 4/5/9's nanobind pattern); falls
+    back to a pre-allocated-numpy version otherwise, so the pipeline still
+    runs (more slowly) without the compiled extension.
     """
 
     def __init__(self, dt: float = 1.0, process_noise: float = 0.01,
                  measurement_noise: float = 0.1):
         self.dt = dt
 
+        if _HAS_NATIVE:
+            self._impl = kalman_native.FastKalmanFilter(dt, process_noise, measurement_noise)
+            # These are live views into the C++ buffer, not copies: writing
+            # into them (e.g. state[:] = ...) and calling predict()/update()
+            # both act on the same underlying memory.
+            self.state = self._impl.state
+            self.covariance = self._impl.covariance
+            return
+
+        self._impl = None
         # State and covariance
         self.state = np.zeros(4, dtype=np.float64)
         self.covariance = np.eye(4, dtype=np.float64)
@@ -75,15 +82,28 @@ class FastKalmanFilter:
         self._I = np.eye(4, dtype=np.float64)
 
     def predict(self) -> np.ndarray:
-        """Predict next state using pre-allocated matrices."""
+        """Predict next state using pre-allocated matrices.
+
+        Returns a snapshot, not a live view: self.state keeps being mutated
+        by later predict()/update() calls, and a caller holding onto this
+        return value (as Pipeline.process_frame does for "predicted") must
+        see the value as of this call, not whatever self.state holds later.
+        """
+        if self._impl is not None:
+            self._impl.predict()
+            return self.state.copy()
         np.dot(self.F, self.state, out=self.state)
         np.dot(self.F, self.covariance, out=self._F_cov)
         np.dot(self._F_cov, self.F.T, out=self.covariance)
         self.covariance += self.Q
-        return self.state
+        return self.state.copy()
 
     def update(self, measurement: np.ndarray) -> np.ndarray:
-        """Update state with measurement using pre-allocated buffers."""
+        """Update state with measurement using pre-allocated buffers.
+        Returns a snapshot -- see predict()'s docstring."""
+        if self._impl is not None:
+            self._impl.update(np.ascontiguousarray(measurement, dtype=np.float64))
+            return self.state.copy()
         np.subtract(measurement, self.H @ self.state, out=self._y)
         HCov = self.H @ self.covariance
         np.dot(HCov, self.H.T, out=self._S)
@@ -91,7 +111,7 @@ class FastKalmanFilter:
         self._K[:] = self.covariance @ self.H.T @ np.linalg.inv(self._S)
         self.state += self._K @ self._y
         self.covariance[:] = (self._I - self._K @ self.H) @ self.covariance
-        return self.state
+        return self.state.copy()
 
 
 # ---------------------------------------------------------------------------

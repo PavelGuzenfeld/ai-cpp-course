@@ -33,16 +33,21 @@ found in `tracker_engine`:
 ### What you must implement
 
 1. C++ source for each of the four components listed above.
-2. pybind11 bindings that expose them to Python.
-3. A thin Python wrapper (`fast_tracker_utils/__init__.py`) so the package can
-   be imported as:
+2. [nanobind](https://github.com/wjakob/nanobind) bindings that expose them to
+   Python — the same pattern established in
+   [Lesson 5](../ai-cpp-l5/)/[Lesson 9](../ai-cpp-l9/), four separate
+   extension modules (one per component) rather than one combined module.
+3. A thin Python wrapper (`solution/tracker_fast.py`'s `FastKalmanFilter`,
+   `FastPreprocessor`, `FastHistoryBuffer`, `FastStateMachine` classes) that
+   consumes the native modules and falls back to pure NumPy when they are not
+   built, so the package is importable as:
 
    ```python
    from fast_tracker_utils import (
-       FastKalmanFilter,
-       FastPreprocessor,
-       FastHistoryBuffer,
-       FastStateMachine,
+       kalman_native,
+       preprocess_native,
+       history_native,
+       state_machine_native,
    )
    ```
 
@@ -83,7 +88,7 @@ progression:
 For each component:
 
 1. Write the C++ implementation under `src/`.
-2. Add [pybind11](https://github.com/pybind/pybind11) bindings.
+2. Add [nanobind](https://github.com/wjakob/nanobind) bindings.
 3. Update `CMakeLists.txt` to build the new module.
 4. Write a small Python test that compares output to the baseline.
 
@@ -96,7 +101,7 @@ speedup meets the >2x threshold.
 
 ```bash
 pip install .
-python3 -c "from fast_tracker_utils import FastKalmanFilter; print('OK')"
+python3 -c "from fast_tracker_utils import kalman_native; print('OK')"
 ```
 
 ### Step 5 — Run the Final Benchmark
@@ -108,13 +113,49 @@ python3 solution/benchmark_fast.py
 This will print a side-by-side comparison of baseline vs fast for all four
 components and the full pipeline.
 
+`bench()` runs an untimed warm-up before the timed region and times calls in
+batches of 50: CPU frequency scaling needs time to ramp up, and for an
+operation costing hundreds of nanoseconds, timing one call at a time measures
+`time.perf_counter()`'s own overhead as much as the code under test. Skip
+either and whichever component happens to run first measures its own cold
+start, not steady-state cost.
+
+### Reference solution results (this host, in Docker)
+
+```
+KalmanFilter    baseline=  18.2 us  fast=  2.2 us  speedup= 8.3x  [PASS]
+Preprocessor    baseline=2052.3 us  fast=494.1 us  speedup= 4.2x  [PASS]
+HistoryBuffer   baseline=   2.5 us  fast=  0.8 us  speedup= 3.2x  [PASS]
+StateMachine    baseline=   0.2 us  fast=  0.2 us  speedup= 1.2x  [FAIL]
+Pipeline (full) baseline=1881.3 us  fast=479.6 us  speedup= 3.9x  [PASS]
+```
+
+Pipeline time is ~98% preprocessing at baseline, so pipeline speedup tracks
+preprocessor speedup almost directly (Amdahl) — that is why fixing the
+preprocessor's loop order was the highest-leverage change for the >3x
+pipeline bar, more than anything done to the other three components.
+
+**StateMachine's `[FAIL]` is expected, not a bug to chase.** The harness's own
+no-op floor (`bench(lambda: None)`) measures ~0.058us; both baseline and fast
+measure ~0.2us, comfortably above that floor, so this is a real measurement,
+not noise. A per-call crossing of the Python/C++ boundary — argument parsing,
+type checking, nanobind's exception-translation setup — costs on the order of
+0.15us regardless of what the call does, and the dispatch logic this
+component wraps (`std::visit` over four empty structs) is cheaper than that.
+No amount of internal optimization closes that gap without changing the
+API's call granularity (e.g. batching several events per call), which is out
+of scope for a drop-in replacement of `StateMachine.on_event(event: str)`.
+This is the pedagogically useful half of the exercise: not every hot loop
+benefits from a C++ rewrite, and a component this cheap per call is a case
+where the FFI crossing itself is the bottleneck.
+
 ## Grading Rubric (Self-Assessment)
 
 | Category | Points | Criteria |
 |----------|--------|----------|
 | Correctness | 30 | All tests pass; output matches baseline within tolerance |
 | Performance | 30 | Each component achieves >2x speedup; pipeline achieves >3x |
-| Code quality | 20 | Clean C++17, proper memory management, no leaks |
+| Code quality | 20 | Clean C++23, proper memory management, no leaks |
 | Packaging | 10 | `pip install .` works; imports succeed |
 | Documentation | 10 | Brief docstrings on public API; benchmark results recorded |
 | **Total** | **100** | |

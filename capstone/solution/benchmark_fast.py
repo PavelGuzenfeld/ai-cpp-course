@@ -39,13 +39,27 @@ NUM_FRAMES = 1000
 IMAGE_SHAPE = (640, 640, 3)
 
 
-def bench(func, iterations: int = NUM_FRAMES) -> list[float]:
-    """Return per-call timings in seconds."""
-    timings = []
-    for _ in range(iterations):
-        t0 = time.perf_counter()
+def bench(func, iterations: int = NUM_FRAMES, batch: int = 50, warmup: int = 100) -> list[float]:
+    """Return per-call timings in seconds.
+
+    Times `batch` calls per perf_counter() pair and divides: for an
+    operation costing ~0.3us (StateMachine), the two perf_counter() calls
+    and the closure invocation are the same order of magnitude as the
+    thing being measured, so timing one call at a time measures the
+    harness, not the code. `warmup` untimed calls run first so CPU
+    frequency scaling has already ramped up before the timed region --
+    without it, whichever component happens to run first in main()
+    measures its own cold start, not steady-state cost.
+    """
+    for _ in range(warmup):
         func()
-        timings.append(time.perf_counter() - t0)
+    timings = []
+    for _ in range(iterations // batch):
+        t0 = time.perf_counter()
+        for _ in range(batch):
+            func()
+        per_call = (time.perf_counter() - t0) / batch
+        timings.extend([per_call] * batch)
     return timings
 
 
@@ -61,13 +75,14 @@ def stats(timings: list[float]) -> dict[str, float]:
     }
 
 
-def print_comparison(name: str, baseline_t: list[float], fast_t: list[float]) -> None:
+def print_comparison(name: str, baseline_t: list[float], fast_t: list[float],
+                      required_speedup: float = 2.0) -> None:
     b = stats(baseline_t)
     f = stats(fast_t)
     speedup = b["mean"] / f["mean"] if f["mean"] > 0 else float("inf")
-    status = "PASS" if speedup >= 2.0 else "FAIL"
+    status = "PASS" if speedup >= required_speedup else "FAIL"
     print(f"  {name:<25s}  baseline={b['mean']:9.1f} us  fast={f['mean']:9.1f} us  "
-          f"speedup={speedup:5.1f}x  [{status}]")
+          f"speedup={speedup:5.1f}x  (>= {required_speedup:.1f}x)  [{status}]")
 
 
 def main() -> None:
@@ -185,6 +200,11 @@ def main() -> None:
     bpipeline = BaselinePipeline()
     fpipeline = FastPipeline()
 
+    for i in range(100):
+        det = bboxes[i] if i % 2 == 0 else None
+        bpipeline.process_frame(images[i], det)
+        fpipeline.process_frame(images[i], det)
+
     tracemalloc.start()
     bt_pipe = []
     for i in range(NUM_FRAMES):
@@ -205,7 +225,7 @@ def main() -> None:
     _, f_peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
 
-    print_comparison("Pipeline (full)", bt_pipe, ft_pipe)
+    print_comparison("Pipeline (full)", bt_pipe, ft_pipe, required_speedup=3.0)
     print()
     print(f"  Memory — baseline peak: {b_peak / 1024 / 1024:.1f} MB  "
           f"fast peak: {f_peak / 1024 / 1024:.1f} MB")

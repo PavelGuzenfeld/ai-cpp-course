@@ -29,7 +29,14 @@ from tracker_fast import (  # noqa: E402
     FastPreprocessor,
     FastStateMachine,
     Pipeline as FastPipeline,
+    _HAS_NATIVE,
 )
+
+
+def test_native_extension_is_actually_loaded():
+    """A pure-numpy fallback can pass every other test in this file too --
+    this is the one assertion the fallback path cannot satisfy."""
+    assert _HAS_NATIVE
 
 
 # ---------------------------------------------------------------------------
