@@ -70,6 +70,18 @@ run_test "L8 Compile-Time Concepts" \
 run_test "L18 Golden Oracles and Sanitizers" \
     "pytest $PROJECT_ROOT/ai-cpp-l18/ -v"
 
+# L19's default (static) build is SUPPOSED to fail this test -- that failure
+# is the lesson. See ai-cpp-l19/README.md.
+echo "--- L19 Linking Semantics (static build, expected FAIL) ---"
+if pytest "$PROJECT_ROOT/ai-cpp-l19/" -v 2>&1; then
+    echo "L19 Linking Semantics: FAILED (static build should not pass this -- see README.md)"
+    FAIL=$((FAIL + 1))
+else
+    echo "L19 Linking Semantics: PASSED (failed as expected for a static build)"
+    PASS=$((PASS + 1))
+fi
+echo ""
+
 # ---- Summary ----
 echo "========================================="
 echo "  Summary"

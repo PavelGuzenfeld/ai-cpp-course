@@ -145,6 +145,30 @@ jobs:
             bash -c "cd /workspace && rm -rf build/nanobind-l18 install/nanobind-l18 && \
               colcon build --packages-select nanobind-l18"
 
+      - name: Run L19 static-link test (expected to fail)
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip3 install pytest -q && \
+              rm -rf build/nanobind-l19 install/nanobind-l19 && \
+              colcon build --packages-select nanobind-l19 && \
+              source install/setup.bash && \
+              if pytest ai-cpp-l19/ -v; then echo 'ERROR: static build unexpectedly passed'; exit 1; \
+              else echo 'static build failed as expected'; fi"
+
+      - name: Run L19 shared-link test (expected to pass)
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip3 install pytest -q && \
+              rm -rf build/nanobind-l19 install/nanobind-l19 && \
+              colcon build --packages-select nanobind-l19 --cmake-args -DLINKING_REGISTRY_SHARED=ON && \
+              source install/setup.bash && pytest ai-cpp-l19/ -v"
+
+      - name: Rebuild L19 default (static) for evidence validation
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && rm -rf build/nanobind-l19 install/nanobind-l19 && \
+              colcon build --packages-select nanobind-l19"
+
       - name: Run evidence validation
         run: |
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \

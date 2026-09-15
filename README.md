@@ -34,6 +34,7 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 | [L16](ai-cpp-l16/) | Zero-Copy IPC Across Processes | `SCM_RIGHTS` fd passing, shared pages, copy-vs-zero-copy benchmark |
 | [L17](ai-cpp-l17/) | Falsifier-First | Kill criteria, cheapest disconfirming experiment first, verdict docs |
 | [L18](ai-cpp-l18/) | Golden Oracles and Sanitizers | Independent oracles, mask-disagreement rate, `dlopen`/`LD_PRELOAD`, libFuzzer |
+| [L19](ai-cpp-l19/) | Linking Changes Semantics | Static vs shared, ODR, `nm`/`ldd`, `RTLD_LOCAL`, `_GLIBCXX_USE_CXX11_ABI` |
 | [L20](ai-cpp-l20/) | Numerical Robustness in Stateful Pipelines | NaN poisoning, coast-don't-update, log-sum-exp, `assert` under `NDEBUG`, UBSan |
 | [**Capstone**](capstone/) | **Build a Fast Tracker** | **Reimplement tracker_engine bottlenecks, package as pip library** |
 
