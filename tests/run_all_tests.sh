@@ -49,11 +49,15 @@ run_test "L5 Python Optimization" \
 # ---- Phase 2: Tests requiring compiled modules ----
 # Source colcon install if available
 if [ -f "$PROJECT_ROOT/install/setup.bash" ]; then
+    # install/setup.bash references COLCON_TRACE without a default, which
+    # aborts under our own `set -u` (unbound variable).
+    set +u
     source "$PROJECT_ROOT/install/setup.bash"
+    set -u
 fi
 
 run_test "L3 Shared Memory" \
-    "PYTHONPATH=$PROJECT_ROOT/ai-cpp-l3 pytest $PROJECT_ROOT/ai-cpp-l3/test_shm.py $PROJECT_ROOT/ai-cpp-l3/test_integration_shm.py -v"
+    "PYTHONPATH=$PROJECT_ROOT/ai-cpp-l3:\${PYTHONPATH:-} pytest $PROJECT_ROOT/ai-cpp-l3/test_shm.py $PROJECT_ROOT/ai-cpp-l3/test_integration_shm.py -v"
 
 run_test "L4 Nanobind" \
     "pytest $PROJECT_ROOT/ai-cpp-l4/ -v"
