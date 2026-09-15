@@ -19,6 +19,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ai-cpp-l5'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ai-cpp-l4'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ai-cpp-l8'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ai-cpp-l10'))
 
 passed = 0
 failed = 0
@@ -582,6 +583,34 @@ shared_counter.touch()
 check("shared linking: two touches, one counter, both modules read back 2",
       shared_counter.value == 2,
       f"got {shared_counter.value}")
+
+# =====================================================================
+# L10 Round 6: a frozen-gain filter cannot report uncertainty, and raw
+# exp() mode-weighting underflows on a heavy-tailed residual where
+# log-space does not. Pure Python, imported directly -- no build required.
+# =====================================================================
+print("\n--- L10 Round 6: learned-filter uncertainty and log-sum-exp ---")
+from filter_comparison import FrozenGainFilter, TwoModeIMM  # noqa: E402
+
+check("a frozen-gain filter has no covariance attribute to report",
+      not hasattr(FrozenGainFilter(dt=0.1), "P"))
+
+_imm_raw = TwoModeIMM(dt=0.1)
+_imm_log = TwoModeIMM(dt=0.1)
+_heavy_tailed_z = 500.0
+_raw_underflowed = False
+try:
+    _imm_raw.step(_heavy_tailed_z, log_space=False)
+except FloatingPointError:
+    _raw_underflowed = True
+_log_survived = True
+try:
+    _imm_log.step(_heavy_tailed_z, log_space=True)
+except FloatingPointError:
+    _log_survived = False
+
+check("raw exp() mode-weighting underflows on a heavy-tailed residual", _raw_underflowed)
+check("log-space mode-weighting survives the same residual", _log_survived)
 
 # =====================================================================
 # Summary
