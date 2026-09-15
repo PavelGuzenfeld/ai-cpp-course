@@ -496,6 +496,58 @@ check("the GIL serializes pure-Python CPU-bound threads (no speedup from threadi
       f"sequential={sequential_time:.3f}s threaded={threaded_time:.3f}s")
 
 # =====================================================================
+# L18: record parser rejects malformed input, and a mask-disagreement
+# check is bounded to a known boundary instead of demanding exact match.
+#
+# filter_native/record_parser_native are compiled modules, not importable
+# here. This mirrors record_parser.hpp's parse() and the mask-boundary
+# check test_validation.py runs against the compiled module.
+# =====================================================================
+print("\n--- L18: record parser and mask-disagreement metric ---")
+
+
+def _parse_record(data):
+    if len(data) < 8 or data[0:4] != b"RC1\x00":
+        return None
+    version = data[4]
+    length = data[5] | (data[6] << 8)
+    claimed_checksum = data[7]
+    if length > len(data) - 8:
+        return None
+    payload = data[8:8 + length]
+    if sum(payload) % 256 != claimed_checksum:
+        return None
+    return version, payload
+
+
+check("parser rejects a length field that overruns the buffer",
+      _parse_record(bytes([ord("R"), ord("C"), ord("1"), 0, 0, 0xFF, 0xFF, 0])) is None)
+check("parser rejects a checksum mismatch",
+      _parse_record(bytes([ord("R"), ord("C"), ord("1"), 0, 0, 1, 0, 0, 9])) is None)
+check("parser accepts a well-formed record",
+      _parse_record(bytes([ord("R"), ord("C"), ord("1"), 0, 0, 3, 0, 6, 1, 2, 3])) == (0, bytes([1, 2, 3])))
+
+_boundary = {(0, 0)}
+
+
+def _threshold_mask_disagreement(values_f32, values_f64, threshold):
+    disagreements = {
+        (r, c)
+        for r, row32, row64 in zip(range(len(values_f32)), values_f32, values_f64)
+        for c, v32, v64 in zip(range(len(row32)), row32, row64)
+        if (v32 > threshold) != (v64 > threshold)
+    }
+    return disagreements
+
+
+f32_row = [0.5000002, 0.9]
+f64_row = [0.4999998, 0.9]
+disagreement = _threshold_mask_disagreement([f32_row], [f64_row], 0.5)
+check("mask-disagreement is confined to the known boundary pixel, not the whole row",
+      disagreement == _boundary,
+      f"got {disagreement}")
+
+# =====================================================================
 # Summary
 # =====================================================================
 print("\n" + "=" * 60)

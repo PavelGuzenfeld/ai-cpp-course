@@ -114,10 +114,36 @@ jobs:
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
             bash -c "cd /workspace && pip3 install pytest -q && \
               source install/setup.bash && \
-              for l in ai-cpp-l4 ai-cpp-l6 ai-cpp-l7 ai-cpp-l8; do \
+              for l in ai-cpp-l4 ai-cpp-l6 ai-cpp-l7 ai-cpp-l8 ai-cpp-l18; do \
                 echo \"--- \$l ---\" && \
                 PYTHONPATH=\$l:\$PYTHONPATH pytest \$l/ -q --tb=line || true; \
               done"
+
+      - name: Run L18 ASan+UBSan lane
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip3 install pytest -q && \
+              rm -rf build/nanobind-l18 install/nanobind-l18 && \
+              colcon build --packages-select nanobind-l18 --cmake-args -DENABLE_SANITIZERS=ON && \
+              source install/setup.bash && \
+              ASAN_LIB=\$(g++-13 -print-file-name=libasan.so) && \
+              LD_PRELOAD=\$ASAN_LIB ASAN_OPTIONS=detect_leaks=0 pytest ai-cpp-l18/ -v"
+
+      - name: Run L18 TSan lane
+        run: |
+          docker run --rm --security-opt seccomp=unconfined -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && pip3 install pytest -q && \
+              rm -rf build/nanobind-l18 install/nanobind-l18 && \
+              colcon build --packages-select nanobind-l18 --cmake-args -DENABLE_TSAN=ON && \
+              source install/setup.bash && \
+              TSAN_LIB=\$(g++-13 -print-file-name=libtsan.so) && \
+              LD_PRELOAD=\$TSAN_LIB python3 -m pytest ai-cpp-l18/ -v"
+
+      - name: Rebuild L18 without sanitizers for evidence validation
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && rm -rf build/nanobind-l18 install/nanobind-l18 && \
+              colcon build --packages-select nanobind-l18"
 
       - name: Run evidence validation
         run: |
