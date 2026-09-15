@@ -56,6 +56,9 @@ if [ -f "$PROJECT_ROOT/install/setup.bash" ]; then
     set -u
 fi
 
+run_test "L2 Image Processing" \
+    "pytest $PROJECT_ROOT/ai-cpp-l2/ -v"
+
 run_test "L3 Shared Memory" \
     "PYTHONPATH=$PROJECT_ROOT/ai-cpp-l3:\${PYTHONPATH:-} pytest $PROJECT_ROOT/ai-cpp-l3/test_shm.py $PROJECT_ROOT/ai-cpp-l3/test_integration_shm.py -v"
 

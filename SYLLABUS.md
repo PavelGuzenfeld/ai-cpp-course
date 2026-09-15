@@ -74,7 +74,7 @@ Day 5: Capstone project
 | # | Lesson | Time | Prerequisites | Build Required |
 |---|--------|------|---------------|----------------|
 | [L1](ai-cpp-l1/) | SIMD & Environment | 1h | None | Docker + colcon |
-| [L2](ai-cpp-l2/) | Image Processing & Cache | 1.5h | L1 | Docker + colcon |
+| [L2](ai-cpp-l2/) | Image Processing & Cache | 1.5h | L1 | Docker + colcon (ASan overrun lane optional) |
 | [L3](ai-cpp-l3/) | Shared Memory & IPC | 1h | L1, L4 | Docker + colcon |
 | [L4](ai-cpp-l4/) | Nanobind Framework | 1.5h | L1 | Docker + colcon |
 | [L5](ai-cpp-l5/) | Python Optimization | 1.5h | None | **None** (pure Python) |

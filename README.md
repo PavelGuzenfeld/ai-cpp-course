@@ -17,7 +17,7 @@ Real-world examples drawn from [tracker_engine](https://github.com/thebandoffici
 | Lesson | Topic | Key Concepts |
 |--------|-------|--------------|
 | [L1](ai-cpp-l1/) | SIMD & Environment Setup | `std::execution::unseq`, [pybind11](https://github.com/pybind/pybind11), C++ vs Python perf |
-| [L2](ai-cpp-l2/) | Image Processing & Cache Awareness | Cache hierarchy, parallel STL, [OpenCV](https://opencv.org/) C++ |
+| [L2](ai-cpp-l2/) | Image Processing & Cache Awareness | Cache hierarchy, parallel STL, [OpenCV](https://opencv.org/) C++, stride vs width, ASan |
 | [L3](ai-cpp-l3/) | Shared Memory & IPC | [nanobind](https://github.com/wjakob/nanobind) intro, POSIX shm, lock-free patterns |
 | [L4](ai-cpp-l4/) | Nanobind Framework | Zero-copy ndarray, C++ BoundingBox, buffer pools |
 | [L5](ai-cpp-l5/) | Python Optimization | `__slots__`, numpy views, pre-allocated buffers, thread pools |

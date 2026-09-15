@@ -114,10 +114,29 @@ jobs:
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
             bash -c "cd /workspace && pip3 install pytest -q && \
               source install/setup.bash && \
-              for l in ai-cpp-l4 ai-cpp-l6 ai-cpp-l7 ai-cpp-l8 ai-cpp-l18; do \
+              for l in ai-cpp-l2 ai-cpp-l4 ai-cpp-l6 ai-cpp-l7 ai-cpp-l8 ai-cpp-l18; do \
                 echo \"--- \$l ---\" && \
                 PYTHONPATH=\$l:\$PYTHONPATH pytest \$l/ -q --tb=line || true; \
               done"
+
+      - name: Run L2 stride ASan overrun demo (expected to abort)
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && \
+              rm -rf build/cpp_image_processor install/cpp_image_processor && \
+              colcon build --packages-select cpp_image_processor --cmake-args -DENABLE_SANITIZERS=ON && \
+              cd ai-cpp-l2 && \
+              if /workspace/build/cpp_image_processor/stride_demo --trigger-overrun; then \
+                echo 'ERROR: overrun unexpectedly did not abort under ASan'; exit 1; \
+              else \
+                echo 'overrun caught by ASan as expected'; \
+              fi"
+
+      - name: Rebuild L2 without sanitizers for evidence validation
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && rm -rf build/cpp_image_processor install/cpp_image_processor && \
+              colcon build --packages-select cpp_image_processor"
 
       - name: Run L18 ASan+UBSan lane
         run: |
