@@ -1,14 +1,20 @@
 """
 fast_tracker_utils — High-performance tracking utilities with C++ backends.
 
-Students: implement the C++ sources under src/ and uncomment the imports below.
+Four nanobind extension modules, one per component:
+kalman_native, preprocess_native, history_native, state_machine_native.
+See solution/tracker_fast.py for the Python-facing wrapper classes that
+consume them (FastKalmanFilter, FastPreprocessor, FastHistoryBuffer,
+FastStateMachine).
 """
 
-# Uncomment these as you implement each component:
-#
-# from ._native import FastKalmanFilter
-# from ._native import FastPreprocessor
-# from ._native import FastHistoryBuffer
-# from ._native import FastStateMachine
+from . import history_native, kalman_native, preprocess_native, state_machine_native
+
+__all__ = [
+    "kalman_native",
+    "preprocess_native",
+    "history_native",
+    "state_machine_native",
+]
 
 __version__ = "1.0.0"

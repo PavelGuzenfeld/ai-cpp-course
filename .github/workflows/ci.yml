@@ -169,6 +169,14 @@ jobs:
             bash -c "cd /workspace && rm -rf build/nanobind-l19 install/nanobind-l19 && \
               colcon build --packages-select nanobind-l19"
 
+      - name: Build and test capstone
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace/capstone && pip3 install . -q && \
+              pip3 install pytest -q && \
+              pytest baseline/test_baseline.py -q && \
+              cd solution && pytest test_fast.py -q"
+
       - name: Run evidence validation
         run: |
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
