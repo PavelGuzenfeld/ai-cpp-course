@@ -548,6 +548,42 @@ check("mask-disagreement is confined to the known boundary pixel, not the whole 
       f"got {disagreement}")
 
 # =====================================================================
+# L19: static linking gives two independent copies of global state;
+# shared linking gives one.
+#
+# module_a_native/module_b_native are compiled modules, not importable
+# here. This mirrors the counter divergence test_linking.py exercises
+# against the real static/shared build.
+# =====================================================================
+print("\n--- L19: static vs shared global state ---")
+
+
+class _Counter:
+    def __init__(self):
+        self.value = 0
+
+    def touch(self):
+        self.value += 1
+        return self.value
+
+
+# Static build: module_a and module_b each get their own copy.
+counter_a, counter_b = _Counter(), _Counter()
+counter_a.touch()
+counter_b.touch()
+check("static linking: two touches, two independent counters read back 1 each, not 2",
+      counter_a.value == 1 and counter_b.value == 1,
+      f"got a={counter_a.value} b={counter_b.value}")
+
+# Shared build: module_a and module_b observe the same one.
+shared_counter = _Counter()
+shared_counter.touch()
+shared_counter.touch()
+check("shared linking: two touches, one counter, both modules read back 2",
+      shared_counter.value == 2,
+      f"got {shared_counter.value}")
+
+# =====================================================================
 # Summary
 # =====================================================================
 print("\n" + "=" * 60)
