@@ -49,7 +49,11 @@ run_test "L5 Python Optimization" \
 # ---- Phase 2: Tests requiring compiled modules ----
 # Source colcon install if available
 if [ -f "$PROJECT_ROOT/install/setup.bash" ]; then
+    # install/setup.bash references COLCON_TRACE without a default, which
+    # aborts under our own `set -u` (unbound variable).
+    set +u
     source "$PROJECT_ROOT/install/setup.bash"
+    set -u
 fi
 
 run_test "L3 Shared Memory" \
