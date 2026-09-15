@@ -5,6 +5,14 @@ import pytest
 
 from measure_latency import LatencyTracker
 from gpu_timer import GpuTimer, _HAS_CUDA
+from harness_bugs import (
+    choose_warmup_count,
+    count_window_rate_estimate,
+    ema_rate_estimate,
+    make_bursty_arrivals,
+    run_pipeline_correct_start,
+    run_pipeline_wrong_start,
+)
 
 # Try importing C++ modules — tests that need them will be skipped if unavailable
 try:
@@ -224,3 +232,73 @@ class TestGpuTimer:
         assert t.result is not None
         assert t.result.device == "cuda"
         assert t.elapsed_ms > 0
+
+
+# ---------------------------------------------------------------------------
+# Harness bug 1: timing from the wrong start point (length-dependent skew)
+# ---------------------------------------------------------------------------
+
+class TestWrongStartPointSkew:
+    def test_error_fraction_shrinks_as_clip_length_grows(self):
+        """A fixed one-time startup cost folded into the timed region is a
+        much larger fraction of a short clip's total than a long one's --
+        not a constant offset, a length-dependent one."""
+        startup_s, per_frame_s = 0.03, 0.01
+        wrong_short = run_pipeline_wrong_start(5, startup_s, per_frame_s)
+        wrong_long = run_pipeline_wrong_start(50, startup_s, per_frame_s)
+
+        error_short = (wrong_short - per_frame_s) / per_frame_s
+        error_long = (wrong_long - per_frame_s) / per_frame_s
+
+        assert error_short > 2 * error_long
+
+    def test_correct_start_point_is_stable_across_lengths(self):
+        """Once the clock starts after warmup, the reported per-frame cost
+        should not depend on how many frames were run. Tolerance covers
+        OS scheduler jitter on time.sleep(), not the effect under test."""
+        startup_s, per_frame_s = 0.03, 0.01
+        correct_short = run_pipeline_correct_start(5, startup_s, per_frame_s)
+        correct_long = run_pipeline_correct_start(50, startup_s, per_frame_s)
+
+        assert correct_short == pytest.approx(per_frame_s, rel=0.4)
+        assert correct_long == pytest.approx(per_frame_s, rel=0.4)
+
+
+# ---------------------------------------------------------------------------
+# Harness bug 2: EMA of inter-arrival gaps over-reports on a bursty drain
+# ---------------------------------------------------------------------------
+
+class TestEmaOverReportsOnBurstyDrain:
+    def test_ema_rate_exceeds_count_window_rate_by_two_to_three_x(self):
+        """Parameters chosen (see PR discussion) to land in the 2-3x range
+        docs/harness.md reports for a real bursty drain."""
+        timestamps = make_bursty_arrivals(
+            burst_size=10, intra_burst_gap_s=0.001, inter_burst_gap_s=0.5, n_bursts=6)
+        ema_rate = ema_rate_estimate(timestamps, alpha=0.15)
+        window_rate = count_window_rate_estimate(timestamps, window_s=0.5)
+
+        ratio = ema_rate / window_rate
+        assert 2.0 <= ratio <= 3.0
+
+    def test_steady_arrivals_do_not_trigger_the_overreport(self):
+        """The bug is specific to bursty arrival patterns -- a steady
+        stream gives the EMA and the windowed count the same answer."""
+        timestamps = [i * 0.05 for i in range(60)]
+        ema_rate = ema_rate_estimate(timestamps, alpha=0.15)
+        window_rate = count_window_rate_estimate(timestamps, window_s=0.5)
+
+        assert ema_rate == pytest.approx(window_rate, rel=0.05)
+
+
+# ---------------------------------------------------------------------------
+# Warmup discard: choosing N by inspection
+# ---------------------------------------------------------------------------
+
+class TestChooseWarmupCount:
+    def test_finds_the_end_of_an_inflated_warmup_run(self):
+        timings = [50.0, 40.0, 30.0, 22.0] + [10.0, 10.2, 9.8, 10.1, 9.9, 10.0]
+        assert choose_warmup_count(timings, stable_run=5, tolerance=0.1) == 4
+
+    def test_already_stable_data_discards_nothing(self):
+        timings = [10.0, 10.1, 9.9, 10.0, 9.95, 10.05]
+        assert choose_warmup_count(timings, stable_run=5, tolerance=0.1) == 0

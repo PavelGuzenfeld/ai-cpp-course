@@ -226,6 +226,89 @@ Measuring each stage separately tells you where to focus optimization effort.
 The tools in this lesson let you do exactly that — with nanosecond precision from C++,
 exposed to Python through [nanobind](https://github.com/wjakob/nanobind).
 
+## The Harness Is Where the Bugs Are
+
+A benchmark can be wrong in ways that look like a plausible result and are
+never questioned. `harness_bugs.py` reproduces two measured bugs from this
+course's source material (`gst-nvmm-cpp`), each as a runnable demo: the
+wrong number first, then the fix.
+
+### Bug 1: timing from the wrong start point
+
+Wall-clock timing started at pipeline startup — folding in preroll plus
+one-time GPU/engine warmup into every reported number. The skew is not a
+constant offset: a fixed one-time cost is a large fraction of a short
+clip's total and a small fraction of a long one's, so short clips look
+disproportionately worse for no algorithmic reason, and cross-clip numbers
+stop being comparable.
+
+```python
+run_pipeline_wrong_start(n_frames, startup_s, per_frame_s)    # clock starts before warmup
+run_pipeline_correct_start(n_frames, startup_s, per_frame_s)  # clock starts at first real work
+```
+
+`TestWrongStartPointSkew` asserts the *shape* of the bug, not just that
+the broken version is slower: the relative error the wrong start point
+introduces at 5 frames is more than twice the relative error at 50 frames,
+while the correct start point reports the same per-frame cost regardless
+of length.
+
+### Bug 2: an EMA of inter-arrival gaps over-reports on a bursty drain
+
+An exponential moving average of the gaps *between* events weights every
+event equally, regardless of how much wall-clock time it represents. When
+a queue drains in a burst — ten items arriving almost simultaneously — the
+EMA of those near-zero gaps stays low well after the burst has drained,
+and the implied rate (`1 / EMA(gap)`) stays high to match. Counting events
+in a fixed wall-clock window isn't fooled by this, because it weights
+time, not events.
+
+```python
+timestamps = make_bursty_arrivals(burst_size=10, intra_burst_gap_s=0.001,
+                                   inter_burst_gap_s=0.5, n_bursts=6)
+ema_rate_estimate(timestamps, alpha=0.15)          # over-reports
+count_window_rate_estimate(timestamps, window_s=0.5)  # does not
+```
+
+`TestEmaOverReportsOnBurstyDrain` pins the over-report to the 2-3x range
+this course's source material measured for a real bursty drain, and
+separately confirms a *steady* arrival stream doesn't trigger it at all —
+the bug is specific to the burst shape, not the EMA formula in general.
+
+### Warmup and steady state
+
+Discarding a fixed "always skip the first 10" is a convention, not a
+measurement. `choose_warmup_count()` instead looks at the data: it finds
+the first point after which a run of samples all land within a tolerance
+of their own median, and reports that as the warmup count. Applied to a
+synthetic run with an inflated warmup hump, it finds exactly where the
+hump ends; applied to already-stable data, it discards nothing.
+
+### The one-stage-faster, system-slower case
+
+Not reproduced here (it needs a GPU under real contention, which this
+lesson's environment doesn't have), but worth stating because it inverts
+the obvious choice: a compute mode that is faster in isolation for one
+stage can be the wrong default for the whole system, if it monopolizes a
+GPU that other stages also need. The locally optimal choice for the stage
+you're benchmarking is not always the globally optimal choice for the
+pipeline it lives in — pick the slower stage-level option if it leaves
+the resource free for someone else's work.
+
+### A checklist for reporting a number
+
+Before writing a number in a commit message, a PR, or a README:
+
+- **Hardware** — CPU/GPU model, not just "x86" or "Jetson"
+- **Input size** — the shape/length that was actually measured
+- **Iteration count** — how many repetitions the number is derived from
+- **Warmup discarded** — how many samples, and how that count was chosen
+- **Statistic used** — mean, median, p99 — and why that one, not another
+
+A number missing any of these is not wrong, but it isn't reproducible
+either, and "reproducible" is the whole point of measuring instead of
+guessing.
+
 ## Build and Run
 
 ```bash
@@ -287,6 +370,7 @@ python3 ai-cpp-l6/gpu_timer.py
 | [gpu_timer.py](gpu_timer.py) | GPU timing with torch.cuda.Event wrapper |
 | [profile_pipeline.py](profile_pipeline.py) | Pipeline profiling demonstration |
 | [benchmark_measurement.py](benchmark_measurement.py) | Full measurement method benchmark suite |
+| [harness_bugs.py](harness_bugs.py) | Wrong-start-point and bursty-EMA harness bugs, reproduced and fixed |
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
 | [test_measurement.py](test_measurement.py) | Unit tests for timer and cache benchmarks |
 | [test_integration_measurement.py](test_integration_measurement.py) | Integration tests for pipeline timing |
