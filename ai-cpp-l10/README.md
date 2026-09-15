@@ -438,6 +438,69 @@ print(f"Current: {current / 1024:.1f} KB, Peak: {peak / 1024:.1f} KB")
 tracemalloc.stop()
 ```
 
+## Round 6: Should This Even Be a Learned Model?
+
+Every round so far assumed the algorithm was right and only the code was
+slow. That's not the only decision an AI developer makes. `gst-nvmm-cpp`
+benchmarked a learned Kalman filter against a tuned classical IMM for
+maneuvering-target tracking and found the tuned classical filter won by
+~490x on position RMSE, held its lead across every distribution shift
+tested, and — the finding that matters more than the ranking — the learned
+filter's uncertainty output was **structurally impossible to produce**, not
+just omitted, because its measurement dimension was smaller than its state
+dimension. Full numbers: [`REPORT.md`](https://github.com/PavelGuzenfeld/gst-nvmm-cpp/blob/feat/kalmannet-vs-imm-benchmark/tools/kalmannet_bench/REPORT.md).
+
+`learned_vs_classical.py` reproduces the *shape* of that finding, not the
+whole benchmark: a real 2-mode IMM (constant-velocity / constant-
+acceleration, with proper Markov mode-mixing — see `filter_comparison.py`)
+against a `FrozenGainFilter` standing in for a learned model: a Kalman gain
+fit once, offline, on a low-maneuver regime, then frozen, never adapting
+online.
+
+```bash
+python3 learned_vs_classical.py
+```
+
+**RMSE isn't the interesting number here — calibration is.** A filter can
+have good RMSE and still be badly miscalibrated, and RMSE alone will never
+tell you. `run_calibration_demo()` runs the *same* filter twice, correct `R`
+and `R` understated 10x:
+
+| | RMSE | ANEES (band: 0.00–3.84, chi²(1) 90%) | coverage@68 | coverage@95 |
+|---|---|---|---|---|
+| correct R | 0.254 | 0.76 | 0.76 | 0.98 |
+| R understated 10x | 0.333 | 7.54 | 0.27 | 0.51 |
+
+RMSE moved 31%. ANEES blew through the band by 2x. Coverage@68 — nominally
+0.68 — dropped to 0.27. A filter that reports its own uncertainty
+confidently and wrongly is worse than one that reports none: `FrozenGainFilter`
+at least never claims a covariance it can't back up.
+
+**The log-sum-exp bug, as a debugging exercise, not new theory** (L20
+already covers the general technique). The IMM's mode-probability update
+needs `exp(log_likelihood)` for each mode, then normalizes. A single
+heavy-tailed residual drives both raw likelihoods to exactly `0.0` in
+float64, and `0.0 / 0.0` raises rather than silently propagating:
+
+```python
+imm.step(heavy_tailed_residual, log_space=False)   # FloatingPointError
+imm.step(heavy_tailed_residual, log_space=True)     # stays finite
+```
+
+Log-space with max-subtraction — same trick as L20's `log_sum_exp` — fixes
+it, and this is exactly how the real evaluation was re-run after the bug
+surfaced: not a hypothetical, a bug that happened during the benchmark this
+lesson cites.
+
+**Latency budget, checked before training anything.** `measure_latency()`
+measures the IMM's own per-step time against a stated 2 ms budget (this
+course's stand-in cycle time) — 0.08 ms median here, comfortably inside it.
+The real benchmark's cited comparison point is sharper: the reference
+learned architecture at its paper-default size measured 2.858 ms
+median / 4.157 ms p99 per step — over a 2 ms budget before accuracy even
+entered the discussion. Check the budget first; an architecture that can't
+fit doesn't need an accuracy comparison to be disqualified.
+
 ## Exercises
 
 1. **Add a fifth optimization round.** The `Pipeline.process_frame()` method
@@ -470,6 +533,10 @@ tracemalloc.stop()
 - Amdahl's Law sets an upper bound on optimization gains
 - Always profile first, always measure after
 - Know when to stop: diminishing returns are real
+- A tuned classical baseline beats an untuned learned one — baseline properly before reaching for a model
+- RMSE cannot tell a well-calibrated filter from an overconfident one; ANEES and coverage can
+- A missing uncertainty output can be structural, not an oversight — check the measurement/state dimension ratio before assuming it's fixable
+- Check the latency budget before training anything; an architecture that can't fit doesn't need an accuracy comparison
 
 ## Lesson Files
 
@@ -478,5 +545,7 @@ tracemalloc.stop()
 | [tracker_pipeline.py](tracker_pipeline.py) | Baseline tracker pipeline with bottlenecks |
 | [tracker_pipeline_optimized.py](tracker_pipeline_optimized.py) | Pipeline after all optimizations applied |
 | [optimization_rounds.py](optimization_rounds.py) | Step-by-step optimization with measurements |
+| [filter_comparison.py](filter_comparison.py) | 2-mode IMM, frozen-gain filter, mistuned-R filter, ANEES/coverage |
+| [learned_vs_classical.py](learned_vs_classical.py) | Round 6: latency budget, calibration, log-sum-exp underflow |
 | [test_optimization.py](test_optimization.py) | Unit tests verifying correctness |
 | [test_integration_optimization.py](test_integration_optimization.py) | Integration tests with memory checks |

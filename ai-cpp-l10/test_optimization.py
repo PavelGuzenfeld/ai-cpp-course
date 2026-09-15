@@ -9,6 +9,7 @@ Verifies that each optimization stage produces identical results to baseline.
 import time
 import numpy as np
 import pytest
+from scipy import stats
 
 from tracker_pipeline import (
     KalmanFilter,
@@ -17,6 +18,13 @@ from tracker_pipeline import (
     Pipeline,
     generate_test_frame,
     simulate_inference,
+)
+from filter_comparison import FrozenGainFilter, _mix_initial_conditions
+from learned_vs_classical import (
+    measure_latency,
+    run_calibration_demo,
+    run_imm_vs_frozen,
+    run_underflow_demo,
 )
 from tracker_pipeline_optimized import (
     KalmanFilterOptimized,
@@ -352,4 +360,96 @@ class TestTimingImprovement:
         assert optimized_time < baseline_time * 1.3, (
             f"PostProcessor optimized ({optimized_time / 1e6:.1f} ms) is slower than "
             f"baseline ({baseline_time / 1e6:.1f} ms)"
+        )
+
+
+class TestImmMixing:
+    """The mixing step is what makes an IMM an IMM rather than two filters
+    averaged after the fact -- test it directly, not just through the
+    filter's overall statistical behavior."""
+
+    def test_mix_weights_are_a_normalized_blend_for_each_target_mode(self):
+        x_modes = [np.array([1.0, 0.0, 0.0]), np.array([0.0, 5.0, 0.0])]
+        p_modes = [np.eye(3), np.eye(3) * 2]
+        mode_probs = np.array([0.5, 0.5])
+        transition = np.array([[0.9, 0.1], [0.1, 0.9]])
+
+        c, mixed_x, mixed_p = _mix_initial_conditions(x_modes, p_modes, mode_probs, transition)
+
+        # Symmetric prior + symmetric transition: predicted mode
+        # probabilities must stay exactly 0.5 / 0.5.
+        assert c[0] == pytest.approx(0.5)
+        assert c[1] == pytest.approx(0.5)
+
+        # Mode 0 (persistence 0.9) should stay closer to x_modes[0] than an
+        # unweighted 50/50 average would -- a tight, hand-computed bound,
+        # not just "some blend happened".
+        expected_mode0 = 0.9 * x_modes[0] + 0.1 * x_modes[1]
+        assert mixed_x[0] == pytest.approx(expected_mode0)
+
+    def test_mix_weights_reduce_to_the_prior_when_transition_is_identity(self):
+        """A transition matrix with no mode switching must leave each
+        mode's state untouched -- the simplest case with a known answer."""
+        x_modes = [np.array([3.0, 1.0, 0.0]), np.array([-2.0, 0.0, 0.0])]
+        p_modes = [np.eye(3), np.eye(3)]
+        mode_probs = np.array([0.3, 0.7])
+        transition = np.eye(2)
+
+        _, mixed_x, _ = _mix_initial_conditions(x_modes, p_modes, mode_probs, transition)
+
+        assert mixed_x[0] == pytest.approx(x_modes[0])
+        assert mixed_x[1] == pytest.approx(x_modes[1])
+
+
+class TestLearnedVsClassical:
+    """Round 6: should this be a learned model at all?"""
+
+    def test_frozen_gain_filter_never_reports_a_covariance(self):
+        """Mirrors gst-nvmm-cpp's finding #1: the learned filter's inability
+        to produce uncertainty is structural, not an oversight -- a
+        FrozenGainFilter simply has no covariance attribute to read."""
+        frozen = FrozenGainFilter(dt=0.1)
+        assert not hasattr(frozen, "P")
+
+    def test_imm_anees_falls_inside_its_chi_square_band(self):
+        """A correctly calibrated 1-dof filter's ANEES should land inside
+        the chi-square(1) 90% band -- this is the positive control for the
+        miscalibration test below."""
+        comparison = run_imm_vs_frozen()
+        lo, hi = stats.chi2.ppf(0.05, df=1), stats.chi2.ppf(0.95, df=1)
+        assert lo <= comparison["imm_anees"] <= hi
+
+    def test_raw_exp_mode_weighting_underflows_on_a_heavy_tailed_residual(self):
+        result = run_underflow_demo()
+        assert result["raw_space_underflowed"]
+
+    def test_log_space_mode_weighting_survives_the_same_residual(self):
+        result = run_underflow_demo()
+        assert result["log_space_survived"]
+
+    def test_understated_measurement_noise_breaks_calibration_without_moving_rmse_much(self):
+        """The core of the lesson: RMSE alone cannot distinguish a
+        well-calibrated filter from an overconfident one. Understating R by
+        10x should barely move RMSE but should blow the ANEES band and drag
+        coverage well below its nominal fraction."""
+        calib = run_calibration_demo()
+        lo, hi = stats.chi2.ppf(0.05, df=1), stats.chi2.ppf(0.95, df=1)
+
+        assert lo <= calib["correct"]["anees"] <= hi
+        assert calib["understated_10x"]["anees"] > hi
+
+        assert calib["understated_10x"]["coverage_68"] < 0.5
+        assert calib["understated_10x"]["coverage_95"] < 0.8
+
+        rmse_ratio = calib["understated_10x"]["rmse"] / calib["correct"]["rmse"]
+        assert rmse_ratio < 2.0, (
+            f"RMSE moved {rmse_ratio:.2f}x -- calibration test no longer isolates "
+            f"the miscalibration from an accuracy change"
+        )
+
+    def test_imm_step_latency_stays_within_the_stated_budget(self):
+        latency = measure_latency(budget_ms=2.0)
+        assert latency["within_budget"], (
+            f"median step time {latency['median_ms']:.4f} ms exceeds "
+            f"the {latency['budget_ms']} ms budget"
         )
