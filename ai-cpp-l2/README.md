@@ -40,6 +40,122 @@ Pixel (1,0) → Pixel (1,1) → ...
 Processing row-by-row follows memory order (cache-friendly).
 Processing column-by-column jumps across rows (cache-hostile).
 
+## Stride Is Not Width
+
+Everything above assumes row `n` starts at `n * width * bpp`. On a real
+hardware buffer that is usually false — rows are padded so each one starts
+at an alignment boundary the pixel format itself never mentions:
+
+```
+row_bytes = width * bpp                    stride = row_bytes + padding
+
+row 0: [ pixel data ............ ][ pad ]  <- row 0 starts at offset 0
+row 1: [ pixel data ............ ][ pad ]  <- row 1 starts at offset `stride`, not `row_bytes`
+row 2: [ pixel data ............ ][ pad ]
+```
+
+NumPy hides this well enough that the assumption rarely gets tested: `arr`
+carries its own `.strides` and every NumPy operation honors them, so code
+that never has to compute a row offset by hand never has to get it right.
+The moment you hand a pointer and a couple of ints to C++ — a `memcpy` loop,
+a buffer handed across a C API, an NVMM/GPU surface — nothing enforces that
+for you anymore.
+
+`stride_view.hpp` defines a `View` that carries `stride` alongside `width`/
+`height`/`channels`, and three copy functions built on it:
+
+- `copy_using_stride` — reads each row at `src.stride`. Correct regardless
+  of how much padding a row carries.
+- `copy_using_width_as_stride` — assumes `stride == width * channels`. Row 0
+  is unaffected (both formulas agree at offset 0); every row after it reads
+  from the wrong offset. The output is the same size as a correct copy and
+  contains real pixel bytes — just the wrong ones, shifted by a growing
+  amount each row. **This is the failure that should worry you more than a
+  crash**: nothing about the output says anything is wrong.
+- `copy_overrunning_dst` — the write-side version of the same bug. The
+  destination is sized `width * height * channels` (the no-padding
+  assumption baked into an allocation instead of a read), but the copy loop
+  advances the destination pointer by the source's real `stride` per row.
+  Once `stride > width * channels`, the last row's write lands past the end
+  of the allocation.
+
+### Why the crash is nowhere near the bug
+
+This course's own source material (`gst-nvmm-cpp`) shipped exactly this
+mistake twice: a buffer pool stamped metadata using a stride recomputed from
+the format descriptor instead of read off the real surface, and a `map()`
+call handed back plane 0's pointer with `size` set to the *total* surface
+size instead of one plane's — any full-size write ran off the end of plane
+0. A third case sized a host copy as `width * 4 * height` against a surface
+whose real pitch was larger; the result was a segfault in the next,
+unrelated call, not the copy itself — the corrupted heap byte only became
+visible once something else's allocation landed on it.
+
+`stride_demo`'s `--trigger-overrun` flag reproduces the write-side version
+of this deterministically. Built normally, the corruption is silent until
+some later allocation trips over it (on this host, glibc's own heap
+consistency check happens to catch it at the `delete`/`free` on the way
+out — that is a coincidence of allocator internals, not a guarantee).
+Built with `ENABLE_SANITIZERS=ON`, ASan reports the exact write:
+
+```
+==NNN==ERROR: AddressSanitizer: heap-buffer-overflow ...
+WRITE of size 6144 at 0x... thread T0
+    #1 ... in stride_lesson::copy_overrunning_dst(...) stride_view.hpp:87
+    #2 ... in main stride_demo.cpp:109
+```
+
+That precision is the point of running a sanitizer *at the site of the
+bug* instead of relying on whatever downstream symptom happens to surface
+first — the stack trace above names the actual write; a stack trace from
+the later, unrelated crash would not.
+
+### Multi-plane buffers: why a plane pointer is not `base + w*h`
+
+A YUV surface (NV12, I420) is not one buffer of interleaved samples — it is
+several *planes*, each with its own stride, and the planes are not
+necessarily contiguous with each other (hardware surfaces routinely pad
+between planes too, for the same alignment reasons a single plane's rows
+are padded). `plane[1] = base + width * height` is exactly as wrong as
+`row(y) = base + y * width * bpp`, for the same reason: it recomputes an
+offset the format spec implies instead of reading the one the surface
+actually has. Treat a multi-plane handle as N independent `View`s, each
+with its own base pointer and its own stride — never one buffer sliced by
+arithmetic.
+
+Run it:
+
+```bash
+cd ai-cpp-l2
+../build/cpp_image_processor/stride_demo                    # correct + sheared
+../build/cpp_image_processor/stride_demo --trigger-overrun   # + the overrun
+```
+
+### A version-skew bug found writing this lesson's own tests
+
+`test_image_processing.py`'s tests initially failed with every output byte
+equal to the *input's first byte*, repeated — for every call, regardless
+of what the correct/sheared distinction should have produced. The C++
+logic itself was correct: a standalone `g++` build of the identical source
+file produced the right answer.
+
+The difference was which `pybind11` the two builds saw. This image has two
+installs — an apt package (2.9.1) at `/usr/include/pybind11`, and a pip
+package (3.1.0, what `python3 -m pybind11 --includes` reports) — and
+CMake's `find_package(pybind11)` resolves to the old apt one (no explicit
+`-I` for pybind11 shows up in the actual compile command; it is found on
+the default system include path). `py::array_t<std::uint8_t>(count)` binds
+to a `(ssize_t count, const T *ptr = nullptr, ...)` constructor that exists
+in both versions, but produces a differently-strided (and here, broken)
+array under 2.9.1. The fix — construct with an explicit shape vector,
+`py::array_t<std::uint8_t>(std::vector<py::ssize_t>{count})` — goes
+through the unambiguous shape-based path on both versions.
+
+The lesson this reinforces is the same one the section above teaches:
+letting an API's convenient-looking short form silently produce a
+different memory layout than intended is exactly the class of bug this
+whole lesson is about, just one level up from a raw pointer and a stride.
+
 ## The C++ Code: `cpp_image_processor.cpp`
 
 The implementation has three modes, all doing the same nearest-neighbor resize:
@@ -276,5 +392,10 @@ warm-up pass is larger than the measured pass, flag it for review.
 | [crop_resize.py](crop_resize.py) | Python benchmark comparing all approaches |
 | [opencv_benchmark.py](opencv_benchmark.py) | OpenCV performance measurement script |
 | [cache_warming_fails.cpp](cache_warming_fails.cpp) | Standalone demo of the cache-warming anti-pattern |
+| [stride_view.hpp](stride_view.hpp) | Stride-aware `View` type; correct, sheared, and overrunning copy functions |
+| [stride_demo.cpp](stride_demo.cpp) | Standalone demo: correct vs sheared vs (optionally) overrunning copy on the padded BMP |
+| [stride_view_native.cpp](stride_view_native.cpp) | pybind11 bindings for the correct/sheared copies, for unit testing |
+| [test_image_processing.py](test_image_processing.py) | Unit tests: hand-computed padded buffers, exact shear byte values |
+| [test_integration_image_processing.py](test_integration_image_processing.py) | Integration test: the real BMP asset, padded, copied both ways |
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
 | [bmp-2048x1365.bmp](bmp-2048x1365.bmp) | Test image for benchmarking |
