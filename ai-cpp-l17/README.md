@@ -118,7 +118,11 @@ pytest ai-cpp-l17/ -v
 3. **A CPU claim to falsify on hardware you have**: "unified memory always
    removes the copy, so it will be faster than an explicit copy path."
    Measure it (see [L7J](../ai-cpp-l7j/)) and find the case where it is not
-   — the source project's own worked example for this lesson.
+   — the source project's own worked example for this lesson. Worked on an
+   Orin NX in [verdict_unified_memory.md](verdict_unified_memory.md), with
+   the probe in [unified_memory_probe.cu](unified_memory_probe.cu): the claim
+   is false below about 1M elements and holds above it. Write your own
+   verdict before reading that one.
 
 4. **Write the kill criterion first, actually first**: next time you're
    about to benchmark something, write section 2 of `verdict_template.md`
@@ -132,5 +136,7 @@ pytest ai-cpp-l17/ -v
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration |
 | [falsifier.py](falsifier.py) | The sweep, crossover detection, and verdict rendering |
 | [verdict_template.md](verdict_template.md) | The shape a falsifier's verdict should take |
+| [verdict_unified_memory.md](verdict_unified_memory.md) | Exercise 3 worked on an Orin NX: FALSIFIED below ~1M elements |
+| [unified_memory_probe.cu](unified_memory_probe.cu) | The measurement behind that verdict (host `nvcc`, not in the CMake build) |
 | [test_falsifier.py](test_falsifier.py) | Crossover/verdict logic tested against synthetic data |
 | [test_integration_falsifier.py](test_integration_falsifier.py) | The real timers, tested for the asymptotic fact only |
