@@ -119,11 +119,21 @@ and 64 KB; on the Orin it is between 64 KB and 128 KB, because the A78AE has a
 64 KB L1d. A working set sized to fit L1 on your laptop spills to L2 on the
 target, and nothing in the code changes to tell you.
 
-Sequential access is flat at 3.35 ns on the Orin across six orders of
-magnitude, against 0.43-0.70 ns on x86 — roughly 6x, and it does not narrow
-at any size. The prefetcher is keeping up on both; the Jetson is simply
-slower per access. That ratio, not the cache boundary, is what decides whether
-a stage that is comfortable on your desk fits its budget on the device.
+The sequential column is a warning about the benchmark, not a result. On the
+Orin it reads 3.35 ns at every size from 4 KB to 256 MB — six orders of
+magnitude, no step anywhere, including where the working set leaves L1, L2, L3
+and lands in DRAM. A memory measurement that does not move when the memory it
+touches changes is not measuring memory. Something else is setting the floor:
+at 1.98 GHz, 3.35 ns is about 6.6 cycles per access, which is the cost of the
+loop itself, so the prefetcher is hiding the whole hierarchy behind it.
+
+Read that as the lesson rather than an annoyance. The random column is doing
+its job precisely because it has cliffs in it; the sequential one is flat
+because pointer-free striding is trivially predictable, and the honest
+conclusion is that this lane bounds loop throughput, not latency. Before
+quoting any number from a benchmark, check that it responds to the thing it
+claims to measure — vary the work per access here and if ns/access does not
+move, the loop is the answer. Exercise 5 does exactly that.
 
 ### How to Detect Cache Boundaries
 
@@ -393,6 +403,12 @@ python3 ai-cpp-l6/gpu_timer.py
 
 5. **Percentile analysis**: Collect 10,000 samples of a timing measurement.
    Is the distribution normal? What explains the p99 spikes?
+
+6. **Prove the sequential lane is loop-bound**: the sequential column above is
+   flat across six orders of magnitude. Add a second dependent operation per
+   access and re-run. If ns/access barely moves, you were measuring memory; if
+   it rises roughly in step, you were measuring the loop. Which is it, and
+   what does that say about quoting the sequential number as a memory latency?
 
 ## What You Learned
 
