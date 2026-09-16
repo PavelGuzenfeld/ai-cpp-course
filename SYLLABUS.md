@@ -61,6 +61,7 @@ Day 5: Capstone project
 | "GPU inference is slow (desktop)" | [L7](ai-cpp-l7/) (fused kernels, pinned memory, CUDA IPC) |
 | "GPU inference is slow (Jetson)" | [L7J](ai-cpp-l7j/) (unified memory, power modes, DLA) |
 | "How do I measure what's slow?" | [L6](ai-cpp-l6/) (measurement), [L10](ai-cpp-l10/) (workflow) |
+| "Is this stage worth optimising further?" | [L21](ai-cpp-l21/) (machine model, speed-of-light ceiling) |
 | "How do I ship this to production?" | [L9](ai-cpp-l9/) (packaging) |
 | "I keep getting segfaults in C++" | [L11](ai-cpp-l11/) (memory safety) |
 | "My state machine is string-based" | [L8](ai-cpp-l8/) (variant + visit) |
@@ -94,6 +95,7 @@ Day 5: Capstone project
 | [L18](ai-cpp-l18/) | Golden Oracles and Sanitizers | 1.5h | L4, L11 | Docker + colcon (ASan/UBSan/TSan lanes optional, TSan needs `--security-opt seccomp=unconfined`) |
 | [L19](ai-cpp-l19/) | Linking Changes Semantics | 1h | L4, L9 | Docker + colcon (static build's test fails on purpose, see README) |
 | [L20](ai-cpp-l20/) | Numerical Robustness | 1h | L4 | Docker + colcon (UBSan lane optional) |
+| [L21](ai-cpp-l21/) | Speed-of-Light Budgeting (Part 1) | 1.5h | L6, L10 | Docker + colcon (L7J recommended for the Jetson lane) |
 | [Cap](capstone/) | Capstone Project | 3-4h | All | Docker + `pip install .` (not colcon — a standalone pip package) |
 
 ## Assessment
