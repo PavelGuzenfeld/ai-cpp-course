@@ -86,6 +86,10 @@ dimension, `assert_example_ndebug` silently accepts it.
 ./install/lib/nanobind-l20/assert_example_ndebug -1    # prints "validated dimension: -1"
 ```
 
+Both variants behave identically on x86-64 and on aarch64 (Orin NX, JP6.2):
+exit 134 from `SIGABRT` for the checked build, exit 0 and the printed `-1` for
+the `NDEBUG` one. Unlike the cast below, this one really is portable.
+
 ## UB From an Out-of-Range Float-to-Int Cast
 
 A non-finite `double` reaching a `static_cast<int>` is undefined behaviour,
@@ -112,6 +116,32 @@ make ubsan_example
 # representable values of type 'int'
 # (process aborts: -fno-sanitize-recover makes this a hard stop, not a print-and-continue)
 ```
+
+### The same UB, two different wrong answers
+
+"Undefined" here is not a figure of speech, and the value you get is not even
+consistent between the machines this course targets. Compiled `-O2` with no
+sanitizer, the same casts print:
+
+| expression | x86-64 (i7-12700H) | aarch64 (Orin NX, JP6.2) |
+|---|---|---|
+| `(int)NaN` | -2147483648 | 0 |
+| `(int)+Inf` | -2147483648 | 2147483647 |
+| `(int)-Inf` | -2147483648 | -2147483648 |
+| `(int)1e300` | -2147483648 | 2147483647 |
+
+x86-64 lowers the cast to `cvttsd2si`, which returns the "integer indefinite"
+value `INT_MIN` for every invalid conversion. aarch64 lowers it to `fcvtzs`,
+which saturates per case — NaN to 0, positive overflow to `INT_MAX`. Only the
+`-Inf` row agrees, and it agrees by coincidence.
+
+The 0 is the dangerous one. A NaN that arrives as `INT_MIN` tends to blow
+something up quickly; a NaN that arrives as a plausible-looking 0 travels.
+
+Denormals, by contrast, behave the same on both: neither flushes to zero at
+`-O2`, and `numeric_limits<float>::has_denorm` is 1 on both. Flush-to-zero on
+aarch64 is an FPCR setting, not a default — you get it from `-ffast-math`,
+which is the next section's problem.
 
 ## `-ffast-math` and NaN Handling
 
