@@ -384,6 +384,127 @@ reached exactly that shape on this hardware. A measured "we are staying on the
 GPU, here is the log that says why" ends the conversation permanently. An
 unmeasured "we should try DLA" comes back every quarter.
 
+### The engine map: there are more than two
+
+Everything so far treats the Jetson as a GPU with a CPU attached, plus a DLA.
+It has more offload engines than that, and the question a real pipeline asks at
+every stage is *which engine should this run on, and how do I find out*.
+
+| Engine | Takes | Input layout | Shared? |
+|---|---|---|---|
+| GPU | anything you can write a kernel for | either | yes — the contended one |
+| DLA | TensorRT subgraphs, INT8/FP16 | engine-internal | 2 cores |
+| VIC | format convert, scale, crop, flip | pitch-linear or block-linear | 1 |
+| OFA | dense optical flow | **block-linear only** | 1 |
+| NVENC / NVDEC | H.264/H.265 encode and decode | NVMM | 1 each |
+| NVJPG | JPEG encode and decode | NVMM | 1 |
+| PVA | a closed catalog of fixed-function image ops | pitch-linear | 1 |
+
+Two things fall out of that table immediately. Most of these are *one* unit, so
+"use the VIC" is a claim about the whole system, not about your stage. And the
+layout column is a hard gate: an engine that will not accept your buffer's
+layout is not slow for you, it is unavailable, and you find out at integration
+time.
+
+None of them do general linear algebra. If your stage is not on this list, it
+is a GPU stage.
+
+### Faster is not the same as right
+
+`nvvidconv` has a `compute-hw` property, and `gst-inspect-1.0` states the
+default outright: **"Default, VIC for Jetson"**. The GPU is available and is
+the faster engine for this transform. NVIDIA still ships VIC as the default.
+
+That looks wrong until you measure it under load.
+[`engine_contention_bench.sh`](engine_contention_bench.sh) runs a 1080p→480p
+resize on each engine while `n` neighbours keep the GPU busy. Orin NX, JP6.2,
+900 frames:
+
+| GPU neighbours | VIC fps | GPU fps | winner |
+|---|---|---|---|
+| 0 (isolated) | 64.7 | 90.8 | GPU, by 40% |
+| 1 | 64.5 | 85.5 | GPU, by 33% |
+| 3 | 63.9 | 66.8 | GPU, by 4% |
+| 6 | 63.3 | **50.5** | **VIC, by 25%** |
+
+VIC moves 2% across the whole sweep. The GPU loses 44%. The ranking inverts
+somewhere between three and six neighbours, and **a benchmark of the stage in
+isolation reports the answer that is wrong in production** — which is the same
+failure as [L7](../ai-cpp-l7/)'s default-stream result, seen from the other
+side: there the neighbour was the victim, here it is the cause.
+
+One honest limit on that table. `videotestsrc` is CPU-bound and caps this
+pipeline at **101.9 fps**, measured first by the script for exactly this
+reason. VIC at 64.7 is genuinely the bottleneck, so its number is real. The
+isolated GPU figure of 90.8 is close enough to the ceiling that it is a lower
+bound, not a measurement — the GPU is *at least* that fast in isolation. The
+contended rows are unaffected, because there the GPU is nowhere near the
+ceiling. Read the table as "when does VIC win", not as a pair of engine specs.
+
+The design rule this produces: **pick the engine by what else is running, not
+by the stage's own latency.** A stage moved onto an idle fixed-function unit
+costs a little and frees the contended one. `gst-nvmm-cpp` documents
+`compute-mode=vic` as its default for this reason, and reports the same
+transform costing 1947 µs on a Xavier NX against 35 µs on an Orin NX — a 56×
+spread between boards for one call, which is a second reason not to carry an
+engine choice from one platform to another.
+
+### OFA, and knowing what your test proves
+
+The optical-flow accelerator requires **block-linear** input. That is the
+opposite of the PVA's pitch-linear requirement, and `gst-nvmm-cpp`'s own notes
+record correcting themselves after carrying the PVA constraint over by
+assumption. Layout is per-engine; there is no house rule.
+
+Two further points from that project's OFA work, cited rather than reproduced
+here:
+
+- The *frame* is zero-copy, but the 75 KB flow field is copied to host and does
+  not cross the IPC boundary. The path is not zero-copy end to end, and the
+  docs say so instead of rounding up.
+- Their validation feeds a **static** pattern and gets 4.59 px mean flow, not
+  0 — the aperture problem in textureless regions. So the test proves "a flow
+  field is produced and responds to motion", not "every cell is accurate."
+  Knowing which of those your test establishes is the transferable part.
+
+### Codecs: measure before you wrap
+
+The instinct on meeting a stock GStreamer encoder or JPEG element is to assume
+it round-trips through system memory and to write an NVMM wrapper. Measured on
+two boards, that assumption was **wrong** — the stock elements were already
+zero-copy, and two planned wrapper components were cancelled on the
+measurement rather than built.
+
+Before wrapping anything a vendor ships, check whether the buffer already stays
+on the device. The cheapest version of that check is to look at whether the
+element negotiates `memory:NVMM` caps at all:
+
+```bash
+gst-inspect-1.0 nvv4l2h264enc | grep -A4 'SRC template'
+GST_DEBUG=GST_CAPS:4 gst-launch-1.0 ... 2>&1 | grep NVMM
+```
+
+A wrapper you did not need is worse than no wrapper: it is a component someone
+has to maintain, and it can only make the path slower.
+
+### The decision procedure
+
+For each stage, in this order — the cheap disqualifying questions first:
+
+1. **Is there a fixed-function engine for this at all?** If the stage is not on
+   the engine map, it is a GPU stage and the rest does not apply.
+2. **Does that engine accept my buffer's layout?** Block-linear vs
+   pitch-linear. A no here ends it, or adds a conversion whose cost belongs in
+   the comparison.
+3. **Is the engine free at the moment my stage runs?** One PVA, one OFA, one
+   VIC. If another component already owns it, "available" is theoretical.
+4. **Does it beat the GPU *given the GPU's other work*?** Not in isolation.
+   Measure both under the contention the real pipeline produces, which is what
+   the sweep above does.
+5. **Write the verdict down**, including a re-entry trigger — see
+   [L17](../ai-cpp-l17/). The answer depends on the board, the JetPack version
+   and the rest of the pipeline, so it expires.
+
 ### INT8/FP16 Precision for Tensor Cores
 
 Reduced precision has outsized impact on Jetson because memory bandwidth is the scarce resource:
@@ -552,6 +673,10 @@ tegrastats --interval 1000     # Monitor in real time
 - Whether a model "runs on DLA" depends on its input resolution, not just its architecture: a tensor dimension over 8192 falls back, so the same detector can offload at one size and not another
 - Accelerators are shared resources with small integer counts (2 DLA cores and 1 PVA on an Orin NX), not feature flags two components can each assume they own
 - A measured "the offload is not worth it" is a deliverable; it ends the question in a way an unmeasured "we should try DLA" never does
+- The board has more than two engines (GPU, DLA, VIC, OFA, NVENC/NVDEC, NVJPG, PVA), and most of them are a single shared unit -- an accelerator choice is a system-level claim, not a stage-level one
+- Each engine gates on buffer layout: OFA needs block-linear, PVA needs pitch-linear, and a layout mismatch means unavailable rather than slow
+- Pick the engine by what else is running: a 1080p resize is 40% faster on the GPU in isolation and 25% slower than VIC once six neighbours are loading the GPU, so the isolated benchmark reports the wrong default
+- Check whether a vendor element is already zero-copy before writing a wrapper for it -- two such wrappers were cancelled on the measurement
 - Always benchmark at your deployment power mode -- burst performance at 60W does not predict steady-state behavior at 15W
 - CUDA IPC remains useful on Jetson for process isolation, even though the performance benefit over copy-through-CPU is minimal
 
@@ -560,6 +685,8 @@ tegrastats --interval 1000     # Monitor in real time
 | File | Description |
 |------|-------------|
 | [README.md](README.md) | This lesson (Jetson GPU programming) |
+| [engine_contention_bench.sh](engine_contention_bench.sh) | VIC vs GPU for one resize, swept against GPU load |
+| [gpu_load.cu](gpu_load.cu) | The neighbour that loads the GPU for that sweep (host `nvcc`) |
 | [../ai-cpp-l7/cuda_basics.cu](../ai-cpp-l7/cuda_basics.cu) | CUDA fundamentals: grid-stride, unified vs explicit memory |
 | [../ai-cpp-l7/gpu_preprocess.cu](../ai-cpp-l7/gpu_preprocess.cu) | Fused CUDA preprocessing kernel |
 | [../ai-cpp-l7/gpu_preprocess_cpu.cpp](../ai-cpp-l7/gpu_preprocess_cpu.cpp) | CPU reference preprocessing implementation |
