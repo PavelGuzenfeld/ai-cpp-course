@@ -182,10 +182,13 @@ jobs:
 
 ## Exercises
 
-1. **Flag matrix.** Run `./run_benchmarks.sh` which builds `polynomial_flags.cpp`
-   three ways: `-O2`, `-O3 -march=x86-64-v3`, `-O3 -ffast-math -march=x86-64-v3`.
-   Confirm the v3-without-ffast-math regression on your CPU. Document the
-   crossover point.
+1. **Flag matrix.** Run `./run_benchmarks.sh`, which builds
+   `polynomial_flags.cpp` three ways — `-O2`, `-O3` plus your architecture's
+   baseline, and that again with `-ffast-math` — picking the `-march` value
+   from `uname -m`. Confirm the without-ffast-math regression on your CPU, and
+   note whether you see it at all: it reproduces on x86-64 and does *not* on
+   an Orin NX, where the middle build merely matches `-O2`. Document the
+   crossover point, and the architecture you measured it on.
 2. **clang-tidy fixes.** Run clang-tidy on `dirty_code.cpp`, list every
    warning, fix them one by one until the build passes. Compare your fix to
    `clean_code.cpp`.
