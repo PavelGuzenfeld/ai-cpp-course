@@ -94,6 +94,37 @@ Modern CPUs have a memory hierarchy:
 | L3    | 4-32 MB     | ~10-20 ns       |
 | RAM   | GBs         | ~60-100 ns      |
 
+Those are textbook figures. The point of this lesson is that you measure your
+own. `cache_explorer.py` on the two platforms this course targets:
+
+| Array size | x86-64 seq | x86-64 rand | Jetson seq | Jetson rand |
+|---|---|---|---|---|
+| 4 KB | 0.52 | 1.36 | 3.66 | 2.80 |
+| 32 KB | 0.43 | 1.55 | 3.34 | 2.90 |
+| 64 KB | 0.43 | 9.41 | 3.34 | 3.08 |
+| 128 KB | 0.43 | 9.42 | 3.35 | 10.89 |
+| 1 MB | 0.44 | 50.11 | 3.35 | 10.93 |
+| 4 MB | 0.52 | 64.15 | 3.37 | 24.88 |
+| 8 MB | 0.70 | 98.74 | 3.35 | 140.07 |
+| 64 MB | 0.64 | 139.65 | 3.35 | 208.64 |
+| 256 MB | 0.62 | 157.40 | 3.35 | 214.42 |
+
+ns per access. x86-64 is an i7-12700H; Jetson is an Orin NX (Cortex-A78AE,
+8 cores at 1.98 GHz) on JP6.2 / R36.4.3.
+
+Two things in that table are worth more than the absolute numbers.
+
+The random-access cliff lands in a different place. On x86 it is between 32 KB
+and 64 KB; on the Orin it is between 64 KB and 128 KB, because the A78AE has a
+64 KB L1d. A working set sized to fit L1 on your laptop spills to L2 on the
+target, and nothing in the code changes to tell you.
+
+Sequential access is flat at 3.35 ns on the Orin across six orders of
+magnitude, against 0.43-0.70 ns on x86 — roughly 6x, and it does not narrow
+at any size. The prefetcher is keeping up on both; the Jetson is simply
+slower per access. That ratio, not the cache boundary, is what decides whether
+a stage that is comfortable on your desk fits its budget on the device.
+
 ### How to Detect Cache Boundaries
 
 1. Allocate an array of size S
@@ -252,6 +283,20 @@ the broken version is slower: the relative error the wrong start point
 introduces at 5 frames is more than twice the relative error at 50 frames,
 while the correct start point reports the same per-frame cost regardless
 of length.
+
+Measured at `startup_s=0.5`, `per_frame_s=0.01`, the skew is the same on both
+platforms:
+
+| clip length | x86-64 wrong / correct | Jetson wrong / correct | relative error |
+|---|---|---|---|
+| 10 frames | 60.154 / 10.074 ms | 60.117 / 10.060 ms | +497% |
+| 100 frames | 15.090 / 10.175 ms | 15.062 / 10.056 ms | +50% |
+
+Sub-millisecond agreement across the two platforms, which is the expected
+result and the reason it is worth printing: this bug is arithmetic, not
+hardware. The one-time cost is amortised over more frames, so the same broken
+measurement makes the short clip look 6x worse than the long one while the
+real per-frame cost is identical. Jetson's scheduler jitter does not blur it.
 
 ### Bug 2: an EMA of inter-arrival gaps over-reports on a bursty drain
 
