@@ -224,6 +224,70 @@ with torch.cuda.stream(stream2):
     next_gpu_tensor.copy_(next_pinned_input, non_blocking=True)
 ```
 
+## Your kernel is not the only thing on the device
+
+Everything above assumes your component is alone on the GPU. On an edge box it
+is not: a detector, a tracker and a preprocessor share one device, and each was
+probably measured in isolation by whoever wrote it. A component can be correct
+on its own and harmful in composition.
+
+The question is which of a neighbour's choices actually reaches you.
+[`stream_contention_probe.cu`](stream_contention_probe.cu) runs two components
+at once — B is latency-sensitive and short, A is a long-running throughput
+stage — and varies only what A does. Measured on an Orin NX (8 SMs), B's
+per-call latency over 2000 calls, four runs:
+
+| A's behaviour | B p50 (ms) | B p99 (ms) | B p99 vs alone |
+|---|---|---|---|
+| no neighbour at all | 0.0149 | 0.0177 | — |
+| own stream, `cudaStreamSynchronize` | 0.0148 | 0.0175–0.0214 | ×0.99–1.21 |
+| own stream, `cudaDeviceSynchronize` | 0.0149 | 0.0176–0.0197 | ×0.99–1.12 |
+| **the legacy default stream** | 1.5580 | **1.5667–1.5690** | **×88** |
+
+The result is not the one the folklore predicts. `cudaDeviceSynchronize()` in
+a neighbour is nearly free here — it blocks *A's host thread*, and blocking a
+thread you do not own costs you nothing. What costs 88× is A launching into
+the legacy default stream, because that stream implicitly synchronises with
+every other blocking stream in the process. A did not call a "device-wide"
+anything; it just failed to create a stream.
+
+So the rule is not "avoid `cudaDeviceSynchronize`". It is:
+
+**Every component owns a stream. A library that launches into the default
+stream is a latency bug for everyone else in the process, and it will not
+show up in that library's own benchmark.**
+
+That last clause is the reason this is hard to catch. A's numbers are
+unchanged in all four rows — A is fine. The damage is entirely in someone
+else's p99, and neither team is measuring the pair.
+
+Note the p50/p99 split: in the default-stream row B's *median* is already
+1.56 ms, so here the tail and the middle move together. Report both anyway —
+contention that only shows in the tail is the common case, and a mean would
+have hidden the 0.0177 → 0.0214 row entirely.
+
+### The same bug wearing a library's clothes
+
+A neighbour does not have to be your code. NVIDIA's NPP has a legacy
+stream-setting call that is **process-global**: one component setting it
+clobbers the binding another component is relying on, with no diagnostic. The
+fix is the context-object API, which scopes the stream to a call instead of to
+the process.
+
+That is second-hand evidence, not something this lesson reproduces — it was
+root-caused in `gst-nvmm-cpp`
+([`95dbf60`](https://github.com/PavelGuzenfeld/gst-nvmm-cpp/commit/95dbf60),
+[`6b2ae01`](https://github.com/PavelGuzenfeld/gst-nvmm-cpp/commit/6b2ae01)),
+where a device-wide synchronisation in one component also stalled a
+concurrently running inference stream
+([`10fb7e3`](https://github.com/PavelGuzenfeld/gst-nvmm-cpp/commit/10fb7e3)).
+Worth reading as a class of bug rather than an NPP fact: **any library call
+that sets process-global state is a composition hazard**, and the API that
+looks convenient is usually the one that is global.
+
+Before adopting a library into a pipeline that already has a GPU stage, the
+question to ask is not "is it fast" but "what does it set that I do not own".
+
 ## Solution 4: Batch Inference
 
 tracker_engine's `track_restoration` validates candidate detections one at a time:
@@ -397,6 +461,12 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 6. Build and run `cuda_basics.cu` — compare unified memory vs explicit pinned memory performance
 7. Run the CUDA IPC demo: start `cuda_ipc_producer` in one terminal, `cuda_ipc_consumer` in another. Compare the IPC path vs copy-through-CPU numbers
 8. Run `benchmark_cuda_ipc.py` to see the transfer overhead comparison across data sizes
+9. Build and run `stream_contention_probe.cu` on your own device. Do you
+   reproduce the 88× default-stream penalty, and is `cudaDeviceSynchronize`
+   as cheap for you as it is on an Orin NX? Then give A enough blocks to fill
+   every SM and re-run: all four rows collapse to the same number. Explain
+   why that version of the experiment cannot answer the question, and write
+   the verdict using [L17](../ai-cpp-l17/)'s template.
 
 ## What You Learned
 
@@ -407,6 +477,13 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 - Batch inference amortizes fixed overhead across multiple inputs
 - Not all workloads benefit from GPU — small data, branchy code, I/O-bound work stays on CPU
 - CUDA IPC shares GPU memory across processes without CPU round-trips — essential for multi-process GPU pipelines
+- A component measured alone can be harmful in composition, and the damage
+  lands in someone else's p99 — so the pair has to be measured, not each half
+- Every component owns a stream: launching into the legacy default stream cost
+  a neighbour 88× on an Orin NX, while a neighbour's `cudaDeviceSynchronize`
+  cost it essentially nothing
+- A library call that sets process-global state is a composition hazard; ask
+  what a dependency sets that you do not own
 
 ## Lesson Files
 
@@ -424,6 +501,7 @@ python3 ai-cpp-l7/gpu_pipeline_demo.py
 | [tracker_engine_fixes.py](tracker_engine_fixes.py) | Tracker engine GPU anti-pattern fixes |
 | [benchmark_gpu.py](benchmark_gpu.py) | CPU vs GPU performance comparison |
 | [benchmark_cuda_ipc.py](benchmark_cuda_ipc.py) | IPC vs CPU-mediated transfer benchmark |
+| [stream_contention_probe.cu](stream_contention_probe.cu) | Two components sharing a device; what a neighbour's stream choice costs (host `nvcc`, not in the CMake build) |
 | [CMakeLists.txt](CMakeLists.txt) | CMake build configuration with CUDA support |
 | [test_gpu.py](test_gpu.py) | Unit tests for preprocess and allocator |
 | [test_integration_gpu.py](test_integration_gpu.py) | Full pipeline and batch inference tests |
