@@ -494,7 +494,15 @@ lesson cites.
 
 **Latency budget, checked before training anything.** `measure_latency()`
 measures the IMM's own per-step time against a stated 2 ms budget (this
-course's stand-in cycle time) — 0.08 ms median here, comfortably inside it.
+course's stand-in cycle time):
+
+| Platform | median | p99 | within 2 ms budget |
+|---|---|---|---|
+| x86 (Docker, no GPU) | 0.08 ms | 0.10 ms | yes |
+| Orin NX / JP6 (R36.4.3) | 0.34 ms | 0.38 ms | yes |
+
+The budget argument holds on the target hardware too, not just x86 — the
+Jetson is slower per step but the margin to the 2 ms budget is still wide.
 The real benchmark's cited comparison point is sharper: the reference
 learned architecture at its paper-default size measured 2.858 ms
 median / 4.157 ms p99 per step — over a 2 ms budget before accuracy even
