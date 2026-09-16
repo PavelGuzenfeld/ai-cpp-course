@@ -57,6 +57,28 @@ idle.
 FMA-scheduled without associativity doesn't help a sequential sum. `polynomial_flags.cpp`
 in this lesson reproduces the effect.
 
+**`-march` is an ISA name, not a speed knob, and it does not travel.** Every
+value in the table above is x86-only. Hand `x86-64-v3` to an aarch64 compiler
+and you do not get a slower binary or a warning — you get no binary:
+
+```
+cc1plus: error: unknown value 'x86-64-v3' for '-march'
+cc1plus: note: valid arguments are: armv8-a armv8.1-a ... armv9.3-a native
+```
+
+This lesson's own `CMakeLists.txt` shipped that bug and it took building on a
+Jetson to find it, because CI only ever ran x86. It now picks the baseline
+from `CMAKE_SYSTEM_PROCESSOR` — `x86-64-v3` on x86-64, `armv8.2-a+simd` on
+aarch64, and nothing at all on anything else, with a warning rather than a
+guess.
+
+That last branch is the part worth copying. A wrong `-march` is not a
+portability nuisance you paper over with `if(x86) ... endif()`; the flag
+encodes an assumption about the silicon, so a target you have not thought
+about deserves the conservative default and a message saying so. `native` has
+the same problem one level up: it bakes in the machine that ran the compiler,
+which is the build agent, not the device.
+
 ### A.3 `-ffast-math` — the 2× that ships with a warning
 
 `-ffast-math` bundles six sub-flags, most importantly:
