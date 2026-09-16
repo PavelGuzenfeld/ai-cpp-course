@@ -51,6 +51,30 @@ roughly the same margin on the tiny control, the "win" is dominated by pure
 synchronization overhead, not the copy you think you removed — measure both
 sizes or you can't tell which one you're looking at.
 
+Measured, 200 iterations per cell, µs per transfer:
+
+| path | frame | x86-64 (i7-12700H) | Jetson (Orin NX, JP6.2) |
+|---|---|---|---|
+| copy | 64×64 RGBA control (16 KB) | 21.03 | 12.52 |
+| zero-copy | 64×64 RGBA control (16 KB) | 4.55 | 5.78 |
+| copy | 1080p RGB (~6 MB) | 11123.09 | 5322.77 |
+| zero-copy | 1080p RGB (~6 MB) | 5.67 | 5.50 |
+
+Re-measure these on your own box before quoting them; the two columns above
+are two specific machines, not a property of the architectures.
+
+The control row is what makes the table worth reading. Zero-copy is flat —
+5.78 µs at 16 KB and 5.50 µs at 6 MB on the Jetson — because the cost is one
+`SCM_RIGHTS` handoff and a synchronization round trip regardless of how many
+bytes the segment holds. The copy path scales with the payload, from 12.52 µs
+to 5322.77 µs, a 425x spread over a 380x size increase. That is the shape you
+want to see: it says the win came from not copying bytes, not from a cheaper
+wakeup.
+
+At the control size zero-copy is only ~2x better on the Jetson, and it would
+lose outright to a plain socket write at a small enough frame. Zero-copy is
+not free; it is fixed-cost, which is a different and more useful claim.
+
 ## Falsification: How Would You Know If You Had Silently Fallen Back?
 
 A benchmark that reports plausible zero-copy numbers proves nothing if the
