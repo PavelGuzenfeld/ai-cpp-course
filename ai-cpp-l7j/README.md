@@ -184,6 +184,15 @@ Measured with `unified-memory-demo.cu` (see [course/jetson/](../course/jetson/))
 
 On desktop, explicit wins by 2x. On Jetson, unified wins because there is no transfer to optimize away -- you are just skipping unnecessary copies.
 
+**At one buffer size.** [L17](../ai-cpp-l17/) falsifies the unqualified version
+of that claim on this exact hardware: managed memory loses to an explicit
+pinned path below roughly 1M elements, because it trades a size-proportional
+copy for a fixed per-synchronise coherency cost that dominates when there are
+few bytes to move. The crossover and the numbers are in
+[`verdict_unified_memory.md`](../ai-cpp-l17/verdict_unified_memory.md). Read
+the row above as "unified wins at this size", which is what a single-size
+table can support, and measure your own working set before adopting the rule.
+
 ## Power and Thermal Management
 
 A desktop GPU can sustain 300W+ indefinitely. Jetson Orin tops out at 60W in its highest power mode and can be configured as low as 15W. This changes benchmarking methodology and optimization priorities.
@@ -289,6 +298,91 @@ DLA limitations:
 - Requires INT8 or FP16 precision -- no FP32
 - Lower peak throughput than the GPU, but significantly better perf/watt
 - Two DLA cores on Orin can run two models or two instances simultaneously
+
+#### Check before you plan: reading the build log
+
+`GPU_FALLBACK` is why the snippet above cannot fail, and why it tells you
+nothing. Any layer DLA refuses silently moves to the GPU, so the engine builds
+either way and the first honest signal is the build log, not the API. Budget
+the offload *after* reading it, not before.
+
+Build with `--verbose` and look at the two placement sections TensorRT prints:
+
+```bash
+trtexec --onnx=/usr/src/tensorrt/data/resnet50/ResNet50.onnx \
+        --useDLACore=0 --allowGPUFallback --verbose 2>&1 | tee dla.log
+
+grep -c '\[DlaLayer\]' dla.log      # layers that landed on DLA
+grep -c '\[GpuLayer\]' dla.log      # layers that did not
+grep -c 'ForeignNode' dla.log       # DLA subgraphs -- see the 16-per-core limit
+grep -ci 'reformat' dla.log         # format conversions, often the real cost
+grep 'DLA Memory Pool Sizes' dla.log
+```
+
+On an Orin NX (JP6.2, R36.4.3) the stock ResNet50 sample gives:
+
+```
+---------- Layers Running on DLA ----------
+[DlaLayer] node_of_gpu_0/conv1_1 + node_of_gpu_0/res_conv1_bn_1
+... 121 entries ...
+---------- Layers Running on GPU ----------
+[GpuLayer] SHUFFLE: reshape_after_node_of_gpu_0/pred_1
+[GpuLayer] SOFTMAX: node_of_gpu_0/softmax_1
+
+DLA Memory Pool Sizes: Managed SRAM = 1 MiB, Local DRAM = 1024 MiB, Global DRAM = 512 MiB
+```
+
+121 on DLA, 2 on GPU: the whole convolution stack fuses into one DLA
+`ForeignNode` and only the trailing reshape and softmax bounce back. **That is
+what success looks like**, and it is worth running once so you recognise it —
+a well-behaved CNN is the easy case.
+
+What a refusal looks like is different, and the numbers below are **from a
+different model in a different project**, not reproducible from this course:
+in `gst-nvmm-cpp`'s placement study on Orin NX / R36.4.3 / TensorRT 10.3
+([`dla-pathfinder-verdict.md`](https://github.com/PavelGuzenfeld/gst-nvmm-cpp/blob/archive/placement-study/dla-pathfinder-verdict.md)),
+a transformer graph decomposed into reduce/pow/div/erf and put **312 layers**
+on the unsupported list; fallback fragmentation repeatedly hit DLA's limit of
+**16 subgraphs per core**; each DLA↔GPU boundary inserted format-conversion
+layers, about **12000** of them in one case, and those conversions *were* the
+12.2× regression; and two detector models put **0 layers** on DLA and ran 6.7×
+and 9× slower than a clean GPU build, root-caused from the log to a flattened
+detection-head dimension of 22680 against DLA's per-dimension limit of 8192.
+
+Two things generalise from that. Recurrent layers are unsupported in every
+TensorRT version including 10.3 — architectural, not a version gap you can
+wait out. And "does this model run on DLA" is not a property of the model: the
+same detector at a smaller input resolution fits under the dimension limit and
+offloads fine. Resolution is part of the question.
+
+#### The engines are shared, and there are not many
+
+Verified on an Orin NX by the device nodes present:
+
+| Engine | Count on this board | How checked |
+|---|---|---|
+| DLA | 2 | `/dev/nvhost-ctrl-nvdla0`, `nvdla1` |
+| PVA | 1 | `/dev/nvhost-ctrl-pva0` |
+
+Reported by `gst-nvmm-cpp`'s hardware survey and *not* verified here: the PVA
+carries two vector processors and accepts at most two concurrent tasks, and
+the optical-flow engine is a single shared unit. Treat those as second-hand
+until you check them on your own board.
+
+Either way the planning consequence holds: these are small integers. Two
+components cannot both assume exclusive access to the DLA pair, and nothing
+stops a second process from grabbing a core. An accelerator is a shared
+resource with a count, not a feature flag.
+
+#### "Don't use the accelerator" is a result
+
+The honest outcome of this check is often that the offload is not worth it,
+and that is a finding to write down rather than a failed task — see
+[L17](../ai-cpp-l17/) for the verdict format, and note that L17's own worked
+example ([`verdict_unified_memory.md`](../ai-cpp-l17/verdict_unified_memory.md))
+reached exactly that shape on this hardware. A measured "we are staying on the
+GPU, here is the log that says why" ends the conversation permanently. An
+unmeasured "we should try DLA" comes back every quarter.
 
 ### INT8/FP16 Precision for Tensor Cores
 
@@ -433,13 +527,31 @@ tegrastats --interval 1000     # Monitor in real time
 
 6. (Advanced) Implement a multi-process pipeline on Jetson: Process A captures frames and does preprocessing (fused kernel), Process B runs inference (TensorRT on DLA), Process C does postprocessing (CPU). Use CUDA IPC (from [L7](../ai-cpp-l7/)) and POSIX shared memory (from [L3](../ai-cpp-l3/)) for inter-process communication. Monitor total system power with `tegrastats`.
 
+7. **Read a placement log before trusting an offload.** Build the stock
+   ResNet50 sample with `--useDLACore=0 --allowGPUFallback --verbose` and
+   count `[DlaLayer]` against `[GpuLayer]`. You should see 121 against 2.
+   Then build a model with attention or a normalisation stack the same way.
+   How many layers land on GPU, how many `ForeignNode` subgraphs appear, and
+   how close are you to the 16-per-core limit? The engine builds in both
+   cases — that is the point of the exercise.
+
+8. **Find your own dimension cliff.** Take a detector that offloads cleanly
+   and raise the input resolution until layers start falling back. Where does
+   it break, and does the break correspond to a tensor dimension crossing
+   8192? Write the answer as an L17 verdict: the claim under test is "this
+   model runs on DLA", and it is a claim about a model *and a resolution*.
+
 ## What You Learned
 
 - Jetson's unified memory architecture eliminates the PCIe bottleneck that dominates desktop GPU optimization
-- `cudaMallocManaged` is the preferred allocation strategy on Jetson -- it provides zero-copy access from both CPU and GPU
+- `cudaMallocManaged` is the preferred allocation strategy on Jetson *for buffers large enough to amortise its fixed cost* -- it gives zero-copy access from both CPU and GPU, and loses to an explicit pinned path below roughly 1M elements (L17's verdict)
 - The L7 anti-patterns remain anti-patterns on Jetson, but the priority shifts: per-frame allocation and kernel launch overhead matter more than transfer elimination
 - Power and thermal constraints replace PCIe bandwidth as the primary optimization target
 - DLA offload, INT8 precision, and CUDA Graphs are high-impact optimizations specific to Jetson deployment
+- `GPU_FALLBACK` means a DLA engine always builds, so the build log -- not the API -- is the first signal of whether anything actually offloaded: count `[DlaLayer]` against `[GpuLayer]` before budgeting the win
+- Whether a model "runs on DLA" depends on its input resolution, not just its architecture: a tensor dimension over 8192 falls back, so the same detector can offload at one size and not another
+- Accelerators are shared resources with small integer counts (2 DLA cores and 1 PVA on an Orin NX), not feature flags two components can each assume they own
+- A measured "the offload is not worth it" is a deliverable; it ends the question in a way an unmeasured "we should try DLA" never does
 - Always benchmark at your deployment power mode -- burst performance at 60W does not predict steady-state behavior at 15W
 - CUDA IPC remains useful on Jetson for process isolation, even though the performance benefit over copy-through-CPU is minimal
 
