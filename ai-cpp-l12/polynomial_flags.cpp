@@ -2,8 +2,11 @@
 // array.  Compile three ways and compare the ns/iter on your CPU:
 //
 //   g++ -O2 -std=c++23 polynomial_flags.cpp -o poly_o2
-//   g++ -O3 -std=c++23 -march=x86-64-v3 polynomial_flags.cpp -o poly_v3
-//   g++ -O3 -ffast-math -std=c++23 -march=x86-64-v3 polynomial_flags.cpp -o poly_fast
+//   g++ -O3 -std=c++23 $ARCH polynomial_flags.cpp -o poly_v3
+//   g++ -O3 -ffast-math -std=c++23 $ARCH polynomial_flags.cpp -o poly_fast
+//
+// $ARCH is -march=x86-64-v3 on x86-64 and -march=armv8.2-a+simd on aarch64;
+// run_benchmarks.sh picks it from uname -m.
 //
 // On GCC 14 the middle build is often *slower* than the baseline because the
 // AVX2/FMA scheduler without associative-math permission can't vectorise the
