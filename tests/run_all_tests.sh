@@ -77,6 +77,9 @@ run_test "L8 Compile-Time Concepts" \
 run_test "L18 Golden Oracles and Sanitizers" \
     "pytest $PROJECT_ROOT/ai-cpp-l18/ -v"
 
+run_test "L21 Machine Model: the tax table" \
+    "pytest $PROJECT_ROOT/ai-cpp-l21/ -v"
+
 # L19's default (static) build is SUPPOSED to fail this test -- that failure
 # is the lesson. See ai-cpp-l19/README.md.
 echo "--- L19 Linking Semantics (static build, expected FAIL) ---"
