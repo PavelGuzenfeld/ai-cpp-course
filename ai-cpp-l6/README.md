@@ -94,6 +94,47 @@ Modern CPUs have a memory hierarchy:
 | L3    | 4-32 MB     | ~10-20 ns       |
 | RAM   | GBs         | ~60-100 ns      |
 
+Those are textbook figures. The point of this lesson is that you measure your
+own. `cache_explorer.py` on the two platforms this course targets:
+
+| Array size | x86-64 seq | x86-64 rand | Jetson seq | Jetson rand |
+|---|---|---|---|---|
+| 4 KB | 0.52 | 1.36 | 3.66 | 2.80 |
+| 32 KB | 0.43 | 1.55 | 3.34 | 2.90 |
+| 64 KB | 0.43 | 9.41 | 3.34 | 3.08 |
+| 128 KB | 0.43 | 9.42 | 3.35 | 10.89 |
+| 1 MB | 0.44 | 50.11 | 3.35 | 10.93 |
+| 4 MB | 0.52 | 64.15 | 3.37 | 24.88 |
+| 8 MB | 0.70 | 98.74 | 3.35 | 140.07 |
+| 64 MB | 0.64 | 139.65 | 3.35 | 208.64 |
+| 256 MB | 0.62 | 157.40 | 3.35 | 214.42 |
+
+ns per access. x86-64 is an i7-12700H; Jetson is an Orin NX (Cortex-A78AE,
+8 cores at 1.98 GHz) on JP6.2 / R36.4.3.
+
+Two things in that table are worth more than the absolute numbers.
+
+The random-access cliff lands in a different place. On x86 it is between 32 KB
+and 64 KB; on the Orin it is between 64 KB and 128 KB, because the A78AE has a
+64 KB L1d. A working set sized to fit L1 on your laptop spills to L2 on the
+target, and nothing in the code changes to tell you.
+
+The sequential column is a warning about the benchmark, not a result. On the
+Orin it reads 3.35 ns at every size from 4 KB to 256 MB — six orders of
+magnitude, no step anywhere, including where the working set leaves L1, L2, L3
+and lands in DRAM. A memory measurement that does not move when the memory it
+touches changes is not measuring memory. Something else is setting the floor:
+at 1.98 GHz, 3.35 ns is about 6.6 cycles per access, which is the cost of the
+loop itself, so the prefetcher is hiding the whole hierarchy behind it.
+
+Read that as the lesson rather than an annoyance. The random column is doing
+its job precisely because it has cliffs in it; the sequential one is flat
+because pointer-free striding is trivially predictable, and the honest
+conclusion is that this lane bounds loop throughput, not latency. Before
+quoting any number from a benchmark, check that it responds to the thing it
+claims to measure — vary the work per access here and if ns/access does not
+move, the loop is the answer. Exercise 5 does exactly that.
+
 ### How to Detect Cache Boundaries
 
 1. Allocate an array of size S
@@ -253,6 +294,20 @@ introduces at 5 frames is more than twice the relative error at 50 frames,
 while the correct start point reports the same per-frame cost regardless
 of length.
 
+Measured at `startup_s=0.5`, `per_frame_s=0.01`, the skew is the same on both
+platforms:
+
+| clip length | x86-64 wrong / correct | Jetson wrong / correct | relative error |
+|---|---|---|---|
+| 10 frames | 60.154 / 10.074 ms | 60.117 / 10.060 ms | +497% |
+| 100 frames | 15.090 / 10.175 ms | 15.062 / 10.056 ms | +50% |
+
+Sub-millisecond agreement across the two platforms, which is the expected
+result and the reason it is worth printing: this bug is arithmetic, not
+hardware. The one-time cost is amortised over more frames, so the same broken
+measurement makes the short clip look 6x worse than the long one while the
+real per-frame cost is identical. Jetson's scheduler jitter does not blur it.
+
 ### Bug 2: an EMA of inter-arrival gaps over-reports on a bursty drain
 
 An exponential moving average of the gaps *between* events weights every
@@ -348,6 +403,12 @@ python3 ai-cpp-l6/gpu_timer.py
 
 5. **Percentile analysis**: Collect 10,000 samples of a timing measurement.
    Is the distribution normal? What explains the p99 spikes?
+
+6. **Prove the sequential lane is loop-bound**: the sequential column above is
+   flat across six orders of magnitude. Add a second dependent operation per
+   access and re-run. If ns/access barely moves, you were measuring memory; if
+   it rises roughly in step, you were measuring the loop. Which is it, and
+   what does that say about quoting the sequential number as a memory latency?
 
 ## What You Learned
 
