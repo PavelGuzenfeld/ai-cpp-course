@@ -64,14 +64,59 @@ class DeviceBuffer {
 };
 ```
 
-`CMakeLists.txt` builds it twice:
+`CMakeLists.txt` builds it three ways:
 
-- `device_mock_native` — the nanobind module, `-DDEVICE_MOCK_API`. This is
-  what CI actually builds, links, and tests.
-- `device_real_layout_check` — an `OBJECT` library, `-DDEVICE_REAL_API`.
-  There is no real vendor `.so` to link against on x86, so this target only
-  *compiles* — proving `DeviceBuffer` type-checks against the real header's
-  layout, without ever running.
+- `device_mock_native` — the nanobind module, `-DDEVICE_MOCK_API`. Synthetic
+  frames, no hardware. What CI runs.
+- `device_real_native` — the nanobind module, `-DDEVICE_REAL_API`, linked
+  against [`real_device_v4l2.cpp`](real_device_v4l2.cpp), which implements
+  the vendor API against a `/dev/video*` node. Built everywhere; it is
+  *opening* the device that fails without a camera, not building.
+- `device_real_layout_check` — an `OBJECT` library, compile-only, proving
+  `DeviceBuffer` type-checks against the real header's layout on whatever
+  ABI you are targeting.
+
+### The two `DeviceBuffer`s must not share a name
+
+Both modules load into one Python process, and the two compilations of
+`DeviceBuffer` have *different layouts* — its member is `MockDeviceFrame` in
+one and `DeviceFrame` in the other. Two definitions of `::DeviceBuffer` with
+different members is an ODR violation, and the linker will not tell you: it
+picks one and both modules use it.
+
+nanobind does tell you, at import:
+
+```
+RuntimeWarning: nanobind: type 'DeviceBuffer' was already registered!
+```
+
+The fix is the per-API namespace in `device_buffer.hpp` — `device_mock_api::`
+and `device_real_api::` — so the two classes have distinct mangled names.
+This is [L19](../ai-cpp-l19/)'s failure mode reached from a different
+direction: there, one name with two *linkages*; here, one name with two
+*layouts*. Both are silent without a tool that happens to be looking.
+
+## Which of Your Mock Tests Are Real Tests?
+
+The acceptance question for this lesson is "do the same tests pass against
+the real path". Most of them cannot, and noticing why is the point.
+
+A real camera does not produce 64×48 frames with an arithmetic fill pattern.
+So `test_mocking.py` is split:
+
+- `TestTheContractBothImplementationsOwe` is parametrized over every
+  implementation and may not name a resolution or a pixel value. It asserts
+  what the *API* promises: a nonzero resolution, a resolution stable across
+  frames, timestamps that do not go backwards, a frame count that tracks
+  reads.
+- `TestMockDeviceFrames` asserts the mock's own synthetic fill pattern.
+  Those are tests *of the mock*, and they are fine as long as nobody mistakes
+  them for tests of the code under it.
+
+Adding an implementation means adding one entry to `IMPLEMENTATIONS`, not
+writing a parallel test file. If a contract test fails against the real
+device, either the implementation is wrong or the contract was never really
+the contract — you were describing the mock.
 
 ## Skip, Never Stub
 
@@ -81,6 +126,19 @@ stubbed**, on the mock build. `test_mocking.py::TestRealDevice` is marked
 run, and does not silently report success. A stub that returns a plausible
 answer is worse than a skip: a skip is honest about what wasn't tested; a
 green stub isn't.
+
+The marker is `/dev/video*`, a node that exists when a camera does. That
+matters: an earlier version of this lesson gated on an invented path that no
+driver ever creates, so the test was unreachable on *every* machine including
+the hardware it named. A skip you can never turn into a run is a deleted test
+with extra steps.
+
+Note also `TestTheRealModuleWithoutRealHardware`, which is **not** skipped.
+Opening a nonexistent node, and opening `/dev/null` — which opens fine and
+then fails `VIDIOC_QUERYCAP` — both need to raise, and neither needs a
+camera. Without those, the real implementation's error paths would be
+untested on every machine that lacks a device, which is most of them. Ask of
+any hardware-gated suite: what can I still test without the hardware?
 
 ## Build and Run
 
@@ -128,7 +186,9 @@ pytest ai-cpp-l14/ -v
 
 | File | Description |
 |------|-------------|
-| [real_device_header.h](real_device_header.h) | Stand-in for a vendor SDK header |
+| [real_device_header.h](real_device_header.h) | The vendor-style API: fixed layout, three C entry points |
+| [real_device_v4l2.cpp](real_device_v4l2.cpp) | Real implementation of that API against a `/dev/video*` node |
+| [device_real_native.cpp](device_real_native.cpp) | nanobind module: the real device, skipped when no camera |
 | [mock_device_header.h](mock_device_header.h) | Mock with a `static_assert`-verified matching layout |
 | [mock_device_header_broken.h](mock_device_header_broken.h) | Exercise 4: a deliberately wrong mock |
 | [device_buffer.hpp](device_buffer.hpp) | One implementation, compiled against either header |
