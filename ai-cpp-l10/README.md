@@ -322,7 +322,7 @@ so the output is bit-identical — `test_preprocess_matches` asserts
 `assert_array_equal`, not `assert_allclose`, because that is the actual claim.
 
 ```
-preprocess (loop):    2104 μs/call
+preprocess (loop):    2104 μs/call      # the stage alone, 200 calls, median
 preprocess (gather):    63 μs/call
 speedup:             33.2x
 ```
@@ -357,23 +357,29 @@ architecture and batch size.
 ## Amdahl's Law in Practice
 
 Rounds 1–4 as they were originally written — pre-allocate the Kalman matrices,
-drop the postprocessor's copy chain, pre-allocate the preprocess buffers —
-measured like this on an x86-64 laptop, 100 frames at 120×160, median per stage:
+drop the postprocessor's copy chain, pre-allocate the preprocess buffers. Run
+`optimization_rounds.py` and one run measures this, on an x86-64 laptop, 200
+frames at 120×160, median per stage:
 
 ```
-Stage           Before    After     Speedup   Share of "before"
-─────────────── ───────── ───────── ───────   ─────────────────
-preprocess      2127 μs   2127 μs   1.00x     93%
-inference        109 μs    107 μs   1.02x      5%
-kalman            45 μs     35 μs   1.30x      2%
-postprocess        3 μs      2 μs   1.80x      0%
-─────────────── ───────── ───────── ───────
-TOTAL           2284 μs   2271 μs   1.01x
+Stage           Baseline   Rounds 1-3   Speedup   Share of baseline
+─────────────── ────────── ──────────── ───────   ─────────────────
+preprocess         1955 μs      1945 μs   1.01x    93%
+inference           104 μs        96 μs   1.08x     5%
+kalman               47 μs        33 μs   1.44x     2%
+postprocess         2.8 μs       1.5 μs   1.87x     0%
+─────────────── ────────── ──────────── ───────
+TOTAL              2109 μs      2076 μs   1.02x
 ```
 
-Every component that was optimized got faster. The pipeline did not. Over 100
-replays the end-to-end ratio had a median of **1.008** — measurement noise
-around no change at all.
+Read that TOTAL with suspicion: two more runs of the same script gave 0.94x and
+0.89x. Nothing touched `inference` either, and it still shows 1.08x — that is
+the noise floor of a single run, and the whole baseline-vs-rounds-1-3 comparison
+is inside it. Replayed 100 times the ratio has a **median of 1.008**. The
+honest reading is not "1.02x" or "0.89x", it is *no change, measured badly
+enough that either number is available if you want it*.
+
+Every component that was optimized did get faster. The pipeline did not.
 
 **Amdahl's Law:** the maximum speedup of a system is limited by the fraction
 that *cannot* be improved.
@@ -388,10 +394,11 @@ Where:
   s = speedup of that part
 ```
 
-Kalman and postprocess are 48 μs out of 2284 — p = 0.021. Make them infinitely
-fast, s → ∞, and the ceiling is `1 / (1 - 0.021)` = **1.02x**. The rounds landed
-at 1.01x. They were never going to do better; the work was correct and the
-target was wrong.
+Kalman and postprocess are 50 μs out of 2109 — p = 0.024. Make them infinitely
+fast, s → ∞, and the ceiling is `1 / (1 - 0.024)` = **1.02x**. No measurement
+was needed to know the rounds could not pay; the arithmetic was available
+before the first line was written. The work was correct and the target was
+wrong.
 
 The 93% was in plain sight the whole time. `Preprocessor.preprocess` runs a
 Python loop `target_h * target_w` times per frame — 4096 interpreter iterations
@@ -399,19 +406,20 @@ for a 64×64 output — and Round 4 optimized the two `np.zeros` next to it.
 Replace the loop with a gather and the same table reads:
 
 ```
-Stage           Before    After     Speedup
-─────────────── ───────── ───────── ───────
-preprocess      2127 μs     66 μs   32.2x
-inference        109 μs    107 μs    1.02x  (untouched)
-kalman            45 μs     35 μs    1.30x
-postprocess        3 μs      2 μs    1.80x
-─────────────── ───────── ───────── ───────
-TOTAL           2284 μs    209 μs   10.9x
+Stage           Baseline    Round 4   Speedup
+─────────────── ────────── ────────── ───────
+preprocess         1955 μs      59 μs   33.2x
+inference           104 μs      95 μs    1.09x  (untouched)
+kalman               47 μs      30 μs    1.56x
+postprocess         2.8 μs     1.4 μs    2.00x
+─────────────── ────────── ────────── ───────
+TOTAL              2109 μs     185 μs   11.4x
 ```
 
-End to end, over 30 replays: median ratio 0.091 (**11.0x**), worst 0.116
-(8.6x). The rounds that measured 1.01x and the round that measured 10.9x are
-the same amount of engineering effort.
+This TOTAL survives replaying: 11.61x, 11.38x, 9.39x across the three runs that
+gave 1.02x, 1.08x and 0.89x above, and the pipeline test's own harness measures
+a median of 11.0x over 30 replays with a worst case of 8.6x. A real effect is
+one you have to work to make disappear.
 
 Now inference is 51% of the frame and it is the thing to attack next —
 quantization, TensorRT, pruning — which is a different class of optimization
@@ -438,10 +446,10 @@ Speedup
 ```
 
 That is the curve you get once you are working on the dominant cost. It is not
-the curve this pipeline drew. Measured, the first three fixes saved 10 μs, 1 μs
-and 0 μs out of 2284, and the fourth saved 2061. There was no flattening curve
-to ride — there was one stage worth 93% and three worth 2%, and the order the
-rounds happened to run in had nothing to do with which was which.
+the curve this pipeline drew. Measured, the first three fixes moved the total by
+less than the run-to-run noise, and the fourth took 2109 μs to 185. There was no
+flattening curve to ride — there was one stage worth 93% and three worth 2%, and
+the order the rounds happened to run in had nothing to do with which was which.
 
 Diminishing returns are real, but they arrive *after* you have taken the
 dominant cost. Before that, a flat curve means you are optimizing the wrong
