@@ -58,14 +58,16 @@ class TestTrackingLoopIntegration:
         initial_count = memory_safety_demo.RAIIBuffer.active_count()
         buffers = []
 
+        # The list is the only owner on purpose: a `buf` loop variable would
+        # outlive the loop still referencing the 50th buffer, so clearing the
+        # list would leave one alive and this test would fail for a reason
+        # that has nothing to do with RAII.
         for i in range(50):
-            buf = memory_safety_demo.RAIIBuffer(500)
-            buf.set(0, float(i))
-            buffers.append(buf)
+            buffers.append(memory_safety_demo.RAIIBuffer(500))
+            buffers[-1].set(0, float(i))
 
         assert memory_safety_demo.RAIIBuffer.active_count() == initial_count + 50
 
-        # Release all
         buffers.clear()
         assert memory_safety_demo.RAIIBuffer.active_count() == initial_count
 
