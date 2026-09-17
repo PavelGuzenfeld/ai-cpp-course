@@ -1,10 +1,10 @@
-# Lesson 21: Speed-of-Light Budgeting — Part 1, Measure the Machine
+# Lesson 21: Speed-of-Light Budgeting
 
-> **Part 1 of 2.** This half builds the *machine model*: a measured,
-> contention-aware description of the hardware you actually have. Part 2 turns
-> that model into per-stage budgets and the measured/SOL ratio that decides
-> whether an optimisation is worth starting. Part 1 is useful on its own; Part
-> 2 is not useful without it.
+> Two disciplines, run in order. **Part 1** builds the *machine model*: a
+> measured, contention-aware description of the hardware you actually have,
+> done once per platform configuration. **Part 2** turns that model into a
+> per-stage floor, a budget, and the ratio that decides whether optimising a
+> stage is worth starting at all.
 
 ## Goal
 
@@ -131,10 +131,93 @@ the compiler has hoisted something, or the body is dominating. `work_per_call`
 is in the module for exactly that comparison: give the call a big enough body
 and the crossing stops mattering, which is the other half of the rule.
 
-## What this half does not cover
+## Part 2: from a machine model to a budget
 
-Part 1 of the issue lists eight measurement steps. Three are already measured
-by artifacts in this course and the template cross-references them rather than
+The model is an input, not a deliverable. What it buys you is a *floor* per
+stage, and a ratio that says whether optimising that stage is worth starting.
+
+[`sol.py`](sol.py) is the arithmetic; it has no timing in it at all.
+
+### The three floors, and why SOL is their max
+
+```python
+compute_floor = ops    / measured_sustained_rate_of_that_unit
+memory_floor  = bytes  / bandwidth_available_under_this_graph's_contention
+tax_floor     = crossings * measured_cost_per_crossing
+node_sol      = max(three) + dispatch + completion
+```
+
+`max`, not sum. The floors overlap in time — bytes stream while operations
+issue — so adding them would assert that a stage cannot overlap its own
+memory traffic with its own compute, which is the opposite of what the
+hardware does. Dispatch and completion *are* serial with the work, so those
+add.
+
+`ops` and `bytes` are **compulsory** work, counted off the algorithm rather
+than off the code. A re-read your implementation happens to do is not
+compulsory; it is a design cost, and it gets its own node. That distinction
+is what makes the hidden nodes visible.
+
+### Naming the regime is most of the value
+
+Which floor won decides what a fix would even look like, and the three demand
+completely different fixes. A tax-bound stage does not get faster because you
+optimised the work between crossings — you have to cross less often. `sol.py`
+returns the regime alongside the number, and `verdict()` gives a different
+instruction for each.
+
+### Budgets are a fraction of SOL, never of the deadline
+
+Budgeting against the deadline hides headroom: a stage sitting at 10% of its
+floor still "fits the frame" and nobody looks at it again. 60–80% of SOL is
+the usual band, lower for dispatch-dominated nodes.
+
+### Decide by ratio
+
+- **≥ 70%** — at the floor. Only the *graph* can improve it; stop tuning.
+- **≤ 30%** — real headroom. Check overhead-bound causes first, because a
+  roofline cannot see dispatch, sync or small-work effects.
+- **> 100%** — impossible, and the most important case. Nothing beats its own
+  speed of light, so a stage that measures faster than its SOL means **the
+  machine model is wrong**, not that the stage is excellent. An overstated op
+  count, a rate measured on the wrong unit, or work the hardware is not
+  actually doing. `verdict()` reports this as `IMPOSSIBLE` rather than as a
+  triumph, because celebrating it is how a broken model survives.
+
+### The worked example
+
+[`budget_tracker.py`](budget_tracker.py) budgets one frame of a
+preprocess → inference → postprocess → publish loop against an Orin NX model
+built from [L6](../ai-cpp-l6/)'s cache numbers and Part 1's tax table:
+
+```
+node                           regime     SOL ms  meas ms  of SOL
+preprocess                     memory      0.548    3.000     18%
+inference                      compute    17.530    9.000    195%
+postprocess                    compute     0.033    1.200      3%
+publish (one sendto per box)   tax         0.036    4.000      1%
+```
+
+Three things to read out of it.
+
+**`publish` is at 1% of its floor and is tax-bound** — one `sendto` per
+detection, 100 crossings a frame. A faster serializer buys nothing here; one
+message per frame buys everything. That node is the whole reason the tax
+table exists.
+
+**`postprocess` at 3% looks similar and is not** — it is compute-bound, so
+the fix is a different one, and the regime column is what tells you.
+
+**`inference` reads 195%, which is impossible**, and the example ships that
+way on purpose. Either the 7 GFLOP op count or the 400 GFLOP/s sustained rate
+is wrong. Until you know which, every other row derived from that machine
+model is suspect too. Finding out is Exercise 5 — and noticing it at all is
+the habit the lesson is really trying to build.
+
+## What this lesson does not cover
+
+Part 1 lists eight measurement steps. Three are already measured by artifacts
+elsewhere in this course, and the template cross-references them rather than
 duplicating:
 
 | Step | Covered by |
@@ -148,6 +231,13 @@ Still unmeasured, and left as template sections to fill rather than shipped
 benchmarks: 1.3 handoff matrix, 1.4 isolated per-unit throughput, 1.6
 scheduling substrate, 1.7 power and thermal. Shipping seven half-working
 benchmarks would violate this lesson's own `method:` rule on its first page.
+
+From Part 2, step 10 — **gating merges on the budget** — is not implemented
+here. `sol.py` gives you the ratio a gate would need, but wiring it into CI so
+an over-budget change cannot merge is [L12](../ai-cpp-l12/)'s subject, and the
+check only survives if it is automated. `measurements.csv` and
+`budget_revisions.md` are likewise conventions to adopt rather than code to
+ship: a revision log is only worth anything if a human writes the reason.
 
 ## What You Learned
 
@@ -163,6 +253,14 @@ benchmarks would violate this lesson's own `method:` rule on its first page.
   often rather than speeding up the work between crossings
 - Report the driving loop's own cost next to any per-call measurement, or the
   number is partly the interpreter
+- A stage's SOL is the **max** of its compute, memory and tax floors, not
+  their sum — the floors overlap; only dispatch and completion are serial
+- Naming the regime matters more than the number: a tax-bound stage does not
+  improve when you speed up the work between its crossings
+- Budget against SOL, not against the deadline, or a stage at 10% of its
+  floor will keep "fitting the frame" and never get looked at
+- Measuring *faster* than SOL is impossible, so it means the machine model is
+  wrong — it is the one result you must never accept as good news
 
 ## Exercises
 
@@ -180,6 +278,22 @@ benchmarks would violate this lesson's own `method:` rule on its first page.
    moving to one crossing per frame would save, using your own table. Then
    measure it and compare against your estimate.
 
+5. **Find the broken row.** `budget_tracker.py` reports `inference` at 195%
+   of SOL, which cannot happen. Work out whether the op count or the
+   sustained rate is wrong, fix that input, and say which other rows in the
+   table you should now distrust.
+
+6. **Re-derive after fusing.** Fuse `preprocess` into `inference` — one node,
+   no intermediate tensor written and re-read. Recompute the SOL. The raw
+   time drops; does the *ratio* drop as much? Comparing a new measurement
+   against the old ceiling is the silent failure mode this lesson exists to
+   prevent.
+
+7. **Budget a stage you own.** Build the `Machine` from your own
+   `machine_model.md`, write the nodes for one real pipeline, and check
+   `fits_window`. If the floor alone does not fit the deadline, no
+   implementation will — say what you would change about the *graph*.
+
 ## Lesson Files
 
 | File | Description |
@@ -189,6 +303,9 @@ benchmarks would violate this lesson's own `method:` rule on its first page.
 | [measure_tax.py](measure_tax.py) | Fills the tax table; owns the FFI-crossing measurement |
 | [CMakeLists.txt](CMakeLists.txt) | Build configuration (`NOMINSIZE` so `-O3` is not overridden) |
 | [test_tax.py](test_tax.py) | Asserts the orderings the lesson claims, not absolute values |
+| [sol.py](sol.py) | Part 2: the three floors, regime, budget, ratio and verdict |
+| [budget_tracker.py](budget_tracker.py) | Part 2 worked example: one frame of a tracker loop |
+| [test_sol.py](test_sol.py) | Exact-value tests for the SOL arithmetic and its thresholds |
 
 Depends on [L6](../ai-cpp-l6/) (measurement) and [L10](../ai-cpp-l10/)
 (profiling). [L7J](../ai-cpp-l7j/) is recommended for the Jetson lane. Sits
