@@ -310,7 +310,7 @@ class TestTimingImprovement:
         optimized_time = self._run_timed(PipelineOptimized)
 
         # 30 replays: median ratio 0.091, worst 0.116. 0.25 leaves 2.2x over
-        # the worst sample -- the same margin #86 settled on for the old bound.
+        # the worst sample -- the old 1.2 bound had 1.09x over its own worst.
         assert optimized_time < baseline_time * 0.25, (
             f"Optimized ({optimized_time / 1e6:.1f} ms) is not 4x faster than "
             f"baseline ({baseline_time / 1e6:.1f} ms)"

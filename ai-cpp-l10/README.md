@@ -307,6 +307,9 @@ is the entire cost. Round 4 optimized the line it could see.
 
 ### Round 4, second pass: the loop was the cost
 
+(`optimization_rounds.py` calls this one Round 4 too — the only round number
+the two agree on, by accident.)
+
 Nearest-neighbour resize picks one source pixel per destination pixel, and the
 source indices depend only on the input shape — not on the frame. So compute
 them once and let NumPy do the gather:
@@ -356,10 +359,12 @@ architecture and batch size.
 
 ## Amdahl's Law in Practice
 
-Rounds 1–4 as they were originally written — pre-allocate the Kalman matrices,
-drop the postprocessor's copy chain, pre-allocate the preprocess buffers. Run
-`optimization_rounds.py` and one run measures this, on an x86-64 laptop, 200
-frames at 120×160, median per stage:
+The three fixes above — pre-allocate the Kalman matrices, drop the
+postprocessor's copy chain, pre-allocate the preprocess buffers — are this
+README's Rounds 2, 3 and 4, and `optimization_rounds.py`'s Rounds 1, 2 and 3.
+The script counts only the rounds it can run; the README numbers every section.
+One run of the script, on an x86-64 laptop, 200 frames at 120×160, median per
+stage:
 
 ```
 Stage           Baseline   Rounds 1-3   Speedup   Share of baseline
