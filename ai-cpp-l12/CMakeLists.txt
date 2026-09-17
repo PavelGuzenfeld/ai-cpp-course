@@ -10,13 +10,17 @@ option(ENABLE_CLANG_TIDY "Run clang-tidy on every compile" OFF)
 if(ENABLE_CLANG_TIDY)
   find_program(CLANG_TIDY_EXE NAMES clang-tidy-19 clang-tidy)
   if(CLANG_TIDY_EXE)
+    # No -warnings-as-errors=* here: it overrides .clang-tidy's WarningsAsErrors
+    # and promotes a naming nit in polynomial_flags.cpp to a build error. The
+    # config file is the policy -- that is the thing the lesson is teaching.
     set(CMAKE_CXX_CLANG_TIDY
         ${CLANG_TIDY_EXE}
-        -warnings-as-errors=*
         --extra-arg=-std=c++23)
     message(STATUS "clang-tidy: ${CLANG_TIDY_EXE}")
   else()
-    message(WARNING "clang-tidy not found; continuing without it")
+    # A warning here is how this lesson went unchecked: the toggle was on and
+    # the exercise silently had no teeth. Asked for explicitly, it must exist.
+    message(FATAL_ERROR "ENABLE_CLANG_TIDY=ON but no clang-tidy-19 or clang-tidy on PATH")
   endif()
 endif()
 
