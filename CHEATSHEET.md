@@ -3,13 +3,13 @@
 ## Memory Hierarchy
 
 ```
-L1 cache:   0.5 ns    32-64 KB     ← Keep hot data here
+L1 cache:     1 ns    32-64 KB     ← Keep hot data here (4 cycles; see L6)
 L2 cache:     7 ns    256 KB-1 MB
 L3 cache:    20 ns    8-32 MB
-RAM:        100 ns    16-64 GB     ← 200x slower than L1
+RAM:        100 ns    16-64 GB     ← ~100x slower than L1
 SSD:    100,000 ns    TB
-PCIe:    ~80 ns/B     12 GB/s      ← GPU transfer bottleneck
-GPU mem:   ~1 ns/B    900 GB/s     ← 75x faster than PCIe
+PCIe:              12 GB/s         ← GPU transfer bottleneck
+GPU mem:          900 GB/s         ← 75x the bandwidth of PCIe
 ```
 
 ## Python Optimization Patterns
@@ -190,6 +190,8 @@ colcon build && source install/setup.bash
 pytest ai-cpp-l5/ -v        # Python-only
 pytest ai-cpp-l4/ -v        # after colcon build
 
-# Sanitizers
-cmake -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined" ..
+# Sanitizers — the lessons expose a toggle; don't hand-roll the flags
+colcon build --packages-select nanobind-l18 --cmake-args -DENABLE_SANITIZERS=ON
+colcon build --packages-select nanobind-l18 --cmake-args -DENABLE_TSAN=ON
+# TSan also needs: docker run --security-opt seccomp=unconfined ...
 ```

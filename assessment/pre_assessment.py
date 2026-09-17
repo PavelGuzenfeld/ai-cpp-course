@@ -20,11 +20,11 @@ QUESTIONS = [
         "choices": [
             "A) 2x slower",
             "B) 10x slower",
-            "C) 200x slower",
+            "C) 100x slower",
             "D) 1000x slower",
         ],
         "answer": "C",
-        "explanation": "L1 cache: ~0.5ns, RAM: ~100ns. That's 200x slower.",
+        "explanation": "L1 cache: ~1ns (4 cycles), RAM: ~100ns. That's ~100x slower.",
     },
     {
         "id": 2,
@@ -269,7 +269,7 @@ def run_assessment(label: str) -> dict:
     print()
 
     if score_pct >= 80:
-        print("  You already know a lot — focus on the advanced lessons (L7-L11).")
+        print("  You already know a lot — focus on the advanced lessons (L7-L21).")
     elif score_pct >= 50:
         print("  Good foundation — the course will fill in the gaps.")
     else:

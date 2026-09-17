@@ -95,7 +95,7 @@ Day 5: Capstone project
 | [L18](ai-cpp-l18/) | Golden Oracles and Sanitizers | 1.5h | L4, L11 | Docker + colcon (ASan/UBSan/TSan lanes optional, TSan needs `--security-opt seccomp=unconfined`) |
 | [L19](ai-cpp-l19/) | Linking Changes Semantics | 1h | L4, L9 | Docker + colcon (static build's test fails on purpose, see README) |
 | [L20](ai-cpp-l20/) | Numerical Robustness | 1h | L4 | Docker + colcon (UBSan lane optional) |
-| [L21](ai-cpp-l21/) | Speed-of-Light Budgeting (Part 1) | 1.5h | L6, L10 | Docker + colcon (L7J recommended for the Jetson lane) |
+| [L21](ai-cpp-l21/) | Speed-of-Light Budgeting | 2h | L6, L10 | Docker + colcon (L7J recommended for the Jetson lane) |
 | [Cap](capstone/) | Capstone Project | 3-4h | All | Docker + `pip install .` (not colcon — a standalone pip package) |
 
 ## Assessment
