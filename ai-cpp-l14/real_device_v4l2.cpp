@@ -12,6 +12,7 @@
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -125,9 +126,16 @@ extern "C" int device_read_frame(DeviceHandle *handle, DeviceFrame *out)
     buf.index = 0;
     if (xioctl(handle->fd, VIDIOC_QBUF, &buf) == -1) return -1;
 
-    // O_NONBLOCK means DQBUF returns EAGAIN until the driver has a frame.
-    for (int spins = 0; spins < 100000; ++spins)
+    // 5 s: measured 1.6 s to the first frame on a UVC webcam (sensor start-up),
+    // 200 ms steady state. A spin count here was a timeout with no time in it.
+    constexpr int frame_timeout_ms = 5000;
+    for (;;)
     {
+        pollfd pfd{.fd = handle->fd, .events = POLLIN, .revents = 0};
+        int const ready = ::poll(&pfd, 1, frame_timeout_ms);
+        if (ready == -1 && errno == EINTR) continue;
+        if (ready <= 0) return -1;
+
         v4l2_buffer done{};
         done.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         done.memory = V4L2_MEMORY_MMAP;
@@ -144,7 +152,6 @@ extern "C" int device_read_frame(DeviceHandle *handle, DeviceFrame *out)
         }
         if (errno != EAGAIN) return -1;
     }
-    return -1;
 }
 
 extern "C" void device_close(DeviceHandle *handle)

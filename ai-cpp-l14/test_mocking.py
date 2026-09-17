@@ -127,8 +127,8 @@ class TestRealDevice:
         """The acceptance question: does the mock's *shape* hold on hardware?
 
         Shape, not values. Both must report a resolution, a monotonic
-        timestamp and a per-frame-varying payload; only the mock may claim
-        64x48 and an arithmetic fill.
+        timestamp and a checksum; only the mock may claim 64x48 and an
+        arithmetic fill.
         """
         real = open_real()
         mock = open_mock()
@@ -139,13 +139,12 @@ class TestRealDevice:
             assert isinstance(frame.timestamp_ns, int)
             assert isinstance(frame.data_checksum, int)
 
-    def test_the_real_device_payload_changes_between_frames(self):
-        # The mock guarantees this by construction. If a real capture returns
-        # a constant checksum the buffer is not being refilled, which is the
-        # bug a mock can never catch for you.
+    def test_each_read_returns_a_distinct_frame(self):
+        # Catches the buffer being handed back without being re-queued. The
+        # checksum cannot: on MJPG those 64 bytes are a header (see README).
         device = open_real()
-        checksums = {device.read_frame().data_checksum for _ in range(5)}
-        assert len(checksums) > 1
+        stamps = [device.read_frame().timestamp_ns for _ in range(5)]
+        assert len(set(stamps)) == 5
 
 
 class TestTheRealModuleWithoutRealHardware:

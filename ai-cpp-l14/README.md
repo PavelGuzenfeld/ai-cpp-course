@@ -140,6 +140,45 @@ camera. Without those, the real implementation's error paths would be
 untested on every machine that lacks a device, which is most of them. Ask of
 any hardware-gated suite: what can I still test without the hardware?
 
+## What Running It on a Camera Actually Found
+
+This suite skipped on every machine the lesson was written on, so the real
+path shipped unexecuted. Pointed at two USB cameras it failed six tests, for
+two unrelated reasons.
+
+**The `DQBUF` wait was a timeout with no time in it.** `device_read_frame`
+spun `100000` times on `EAGAIN` and gave up — about 24 ms on the box that
+wrote it. Measured time to a frame:
+
+| device | negotiated format | first frame | steady state |
+|---|---|---|---|
+| USB2.0 HD UVC WebCam | MJPG 1280×720 | 1592 ms | 200 ms |
+| Logitech C925e | YUYV 640×480 | 72 ms | 32 ms |
+
+Both cameras, first frame and steady state, need more than the budget allowed:
+the real path failed 100% of the time, not intermittently. A spin count is not
+a duration. `poll()` with a timeout in milliseconds is, and the number has a
+measurement behind it.
+
+The failure cascaded misleadingly, too. Only the first real test reported
+`device_read_frame failed`; every later one reported `device_open failed` —
+pytest keeps the failing test's traceback, the traceback keeps the temporary
+`RealDevice` alive, and the node stays open. The second symptom has nothing to
+do with opening devices.
+
+**The payload-varies test was a description of the mock.** It asserted that
+`data_checksum` differs across five frames, which the mock guarantees by
+construction. On the MJPG camera those 64 bytes are not pixels: they are
+`FF D8`, `FF C0`, and the `FF DB` quantization-table marker at byte 21. They
+move only when the encoder's rate control does. During auto-exposure
+convergence that is every other frame, so the test passed — let the camera
+settle and the same 64 bytes repeat for 82 consecutive frames, and it fails.
+
+The contract never promised a varying payload; the mock did. That test now
+asserts five reads return five distinct timestamps — a property of the API,
+and still a catch for the bug the old one was aiming at, a buffer handed back
+without being re-queued.
+
 ## Build and Run
 
 ```bash
@@ -160,6 +199,10 @@ pytest ai-cpp-l14/ -v
 - A `-D`-selected `OBJECT` library proves layout compatibility against a
   real vendor header with nothing to link against
 - Skipping a hardware-only test is honest; stubbing it to pass is not
+- A skipped test is an unexecuted test: this one's real path was wrong in two
+  ways that only a camera could show, and a green suite said nothing about it
+- A timeout counted in loop iterations is not a timeout — the number has to be
+  in a unit you can measure the hardware against
 - Extracting the algorithm into a header-agnostic class (`DeviceBuffer`) is
   what makes any of this possible — a class that mixed hardware I/O with
   logic couldn't be tested this way at all
