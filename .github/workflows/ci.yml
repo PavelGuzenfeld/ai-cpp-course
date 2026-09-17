@@ -104,10 +104,32 @@ jobs:
               PYTHONPATH=ai-cpp-l5 pytest ai-cpp-l5/ -v && \
               PYTHONPATH=ai-cpp-l10 pytest ai-cpp-l10/ -v"
 
+      # Caches from the default branch are readable by every PR branch, so
+      # main's runs are what keep this warm; a PR's own cache evaporates.
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: |
+            ccache-
+
       - name: Build all lessons inside Docker
         run: |
-          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
-            bash -c "cd /workspace && colcon build"
+          mkdir -p /tmp/ccache
+          docker run --rm -v $(pwd):/workspace -v /tmp/ccache:/ccache \
+            -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=500M ai-cpp-course:ci \
+            bash -c "cd /workspace && echo \"nproc=\$(nproc)\" && ccache -z && \
+              colcon build --cmake-args \
+                -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && \
+              ccache -s"
+
+      # The container runs as root, so the cache action cannot read what it
+      # wrote. Without this the post-job save is silently partial.
+      - name: Make ccache readable by the cache action
+        if: always()
+        run: sudo chown -R $(id -u):$(id -g) /tmp/ccache
 
       # --reruns 2 absorbs the L10 timing flake (#86); -rR names whichever
       # test a rerun absorbed, since the summary otherwise says only "1 rerun".
