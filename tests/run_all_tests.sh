@@ -74,8 +74,29 @@ run_test "L7 GPU" \
 run_test "L8 Compile-Time Concepts" \
     "pytest $PROJECT_ROOT/ai-cpp-l8/ -v"
 
+run_test "L7J GPU on Jetson" \
+    "PYTHONPATH=$PROJECT_ROOT/ai-cpp-l7j:\${PYTHONPATH:-} pytest $PROJECT_ROOT/ai-cpp-l7j/ -v"
+
+run_test "L11 Memory Safety" \
+    "PYTHONPATH=$PROJECT_ROOT/ai-cpp-l11:\${PYTHONPATH:-} pytest $PROJECT_ROOT/ai-cpp-l11/ -v"
+
+run_test "L13 Ownership of a C Handle" \
+    "pytest $PROJECT_ROOT/ai-cpp-l13/ -v"
+
 run_test "L14 Mocking a Vendor C API" \
     "pytest $PROJECT_ROOT/ai-cpp-l14/ -v"
+
+run_test "L15 Threading and Atomics" \
+    "pytest $PROJECT_ROOT/ai-cpp-l15/ -v"
+
+run_test "L16 Zero-Copy IPC" \
+    "pytest $PROJECT_ROOT/ai-cpp-l16/ -v"
+
+run_test "L17 Falsifier-First" \
+    "pytest $PROJECT_ROOT/ai-cpp-l17/ -v"
+
+run_test "L20 Numerical Robustness" \
+    "pytest $PROJECT_ROOT/ai-cpp-l20/ -v"
 
 run_test "L18 Golden Oracles and Sanitizers" \
     "pytest $PROJECT_ROOT/ai-cpp-l18/ -v"
