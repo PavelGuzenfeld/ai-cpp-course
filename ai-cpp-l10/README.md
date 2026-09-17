@@ -108,7 +108,7 @@ Key rules:
 This lesson broke its own rule 3 and paid for it. `TestTimingImprovement`
 compared one timed run of the baseline against one of the optimized path, and
 CI hid the result behind `--reruns 2`. Replaying the sweep sequence 100 times
-reproduced it once: `test_optimized_not_slower` at ratio 1.224 against its 1.2
+reproduced it once: the pipeline comparison at ratio 1.224 against its 1.2
 bound, `test_postprocessor_improvement` at 1.529 against 1.3.
 
 The measured distributions say those are two different problems with one
@@ -118,11 +118,16 @@ optimized pipeline is not actually faster end to end — so a 1.2 bound leaves
 median of 0.433 and 2x headroom, but it times 10 ms of work, and one
 scheduling outlier was enough.
 
-Taking the median of five runs per side fixes both without moving either
-bound: worst case over 100 replays drops from 1.432 to 1.097 for the pipeline
+Taking the median of five runs per side fixed both without touching either
+bound: worst case over 100 replays dropped from 1.432 to 1.097 for the pipeline
 and from 0.633 to 0.457 for the postprocessor. Widening the number instead
-would have hidden the fact that the end-to-end pipeline optimization does not
-actually pay on this machine.
+would have hidden the fact that the end-to-end optimization did not pay at all.
+
+That 1.008 is worth more than the flake it was hiding, and it became its own
+issue. The Amdahl section below is what it turned into: the optimized stages
+were 2% of the frame, the pipeline comparison could not have moved, and the
+test now asserts a real bound — `optimized < baseline * 0.25` — because there
+is finally something to assert.
 
 `test_kalman_improvement` was measured too and left alone — 1.74x headroom,
 flat across trial counts. Measure before you change it applies to test code as
@@ -130,21 +135,27 @@ much as to the code under it.
 
 ## Round 1: Profile the Baseline
 
-Start by timing every stage of the pipeline:
+Start by timing every stage of the pipeline. `Pipeline.process_frame` in
+`tracker_pipeline.py` does it inline; `optimization_rounds.py` prints the table.
+200 frames at 120×160, median per stage, x86-64 laptop:
 
-```python
-# In tracker_pipeline.py, the Pipeline.process_frame() method
-# times each stage individually:
-#
-#   preprocess:   ~0.15 ms/frame
-#   inference:    ~0.80 ms/frame  (simulated)
-#   kalman:       ~0.25 ms/frame  <-- surprisingly expensive
-#   postprocess:  ~0.10 ms/frame
+```
+preprocess:   1.955 ms/frame   93%
+inference:    0.104 ms/frame    5%   (simulated)
+kalman:       0.047 ms/frame    2%
+postprocess:  0.003 ms/frame    0%
 ```
 
-The Kalman filter is the first surprise. A 12-state Kalman predict step should
-be a handful of matrix multiplies — sub-microsecond work. But it's taking
-0.25 ms because of allocation overhead.
+**The profile has already answered the question, and the answer is
+`preprocess`.** Nothing below matters more than that column of percentages.
+Write it down before reading on, because the next three sections are going to
+be interesting and none of them is the one that pays.
+
+The Kalman filter is the first *surprise* — not the first target. A 12-state
+predict step should be a handful of matrix multiplies, sub-microsecond work,
+and it costs 47 μs because it allocates a fresh `np.eye(12)` and an
+`np.diag()` every call. That is a genuine bug and worth understanding. It is
+also 2% of the frame.
 
 ### What's actually happening in predict()
 
@@ -196,13 +207,15 @@ def predict(self):
 
 **Measured improvement:**
 ```
-kalman predict (before):  ~250 μs/call
-kalman predict (after):   ~45 μs/call
-speedup:                  ~5.5x
+kalman predict (before):  9.9 μs/call    # predict() alone, 5000 calls, median
+kalman predict (after):   6.8 μs/call
+speedup:                  1.5x
 ```
 
 The matrix math itself was always fast. We just stopped paying the allocation
-tax on every frame.
+tax on every frame — and it was a 3 μs tax on a 47 μs stage inside a 2 ms
+frame. The allocation was real, the reasoning was right, and the payoff is
+1.5x of 2% of the workload.
 
 ### Why pre-allocation works
 
