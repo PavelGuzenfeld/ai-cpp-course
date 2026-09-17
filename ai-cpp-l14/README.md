@@ -140,6 +140,28 @@ camera. Without those, the real implementation's error paths would be
 untested on every machine that lacks a device, which is most of them. Ask of
 any hardware-gated suite: what can I still test without the hardware?
 
+## A Fix With No Test, And Why
+
+`device_open` used to gate on `v4l2_capability.capabilities`. That field is the
+union over every node of the physical device, not the node you opened. A UVC
+camera exposes a capture node and a metadata node; on both cameras here the
+metadata node reads `capabilities=0x84a00001` — capture bit set — while its own
+`device_caps=0x04a00000` does not have it. `device_caps` is the per-node field
+and is valid exactly when `V4L2_CAP_DEVICE_CAPS` is set, so that is what the
+code reads now.
+
+No test covers the change, because none can. Flip the field back and the
+metadata node is still rejected: `VIDIOC_G_FMT` with `V4L2_BUF_TYPE_VIDEO_CAPTURE`
+returns `EINVAL` on it three lines later. Capture-capable and `G_FMT`-capable are
+the same set on every node reachable here, so the caps check is redundant with
+the ioctl that follows it and no observable behaviour moves.
+
+A test written against the old field would have passed either way — a test of
+`G_FMT`, named after the caps check. That is the same trap as a test that only
+passes against the mock, and the honest move is not to write it. Reading the
+wrong field is still worth fixing: the next ioctl added above `G_FMT` is the one
+that would have paid for it.
+
 ## What Running It on a Camera Actually Found
 
 This suite skipped on every machine the lesson was written on, so the real

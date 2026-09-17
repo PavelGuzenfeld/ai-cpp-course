@@ -58,9 +58,17 @@ extern "C" DeviceHandle *device_open(char const *path)
     h->fd = fd;
 
     v4l2_capability cap{};
-    if (xioctl(fd, VIDIOC_QUERYCAP, &cap) == -1 ||
-        (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) == 0 ||
-        (cap.capabilities & V4L2_CAP_STREAMING) == 0)
+    if (xioctl(fd, VIDIOC_QUERYCAP, &cap) == -1)
+    {
+        device_close(h);
+        return nullptr;
+    }
+
+    // capabilities is the union over every node of the physical device, so a metadata
+    // node passes on its capture sibling's bits. device_caps is the opened node's own.
+    std::uint32_t const node_caps =
+        (cap.capabilities & V4L2_CAP_DEVICE_CAPS) != 0 ? cap.device_caps : cap.capabilities;
+    if ((node_caps & V4L2_CAP_VIDEO_CAPTURE) == 0 || (node_caps & V4L2_CAP_STREAMING) == 0)
     {
         device_close(h);
         return nullptr;
