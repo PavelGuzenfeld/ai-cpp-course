@@ -238,6 +238,36 @@ class PreprocessorFixed:
         return self._pad_buf
 
 
+class PreprocessorVectorized(PreprocessorFixed):
+    """Round 4 fix: gather the resize instead of looping over pixels in Python.
+
+    Rounds 1-3 removed allocations. This removes the target_h * target_w
+    interpreter iterations, which is where the stage's time actually was.
+    """
+
+    def __init__(self, target_h=64, target_w=64, pad_h=80, pad_w=80):
+        super().__init__(target_h, target_w, pad_h, pad_w)
+        self._map_for_shape = ()
+        self._src_rows = np.zeros(0, dtype=np.intp)
+        self._src_cols = np.zeros(0, dtype=np.intp)
+
+    def preprocess(self, frame):
+        h, w = frame.shape[:2]
+        if self._map_for_shape != (h, w):
+            rows = (np.arange(self.target_h) * (h / self.target_h)).astype(np.intp)
+            cols = (np.arange(self.target_w) * (w / self.target_w)).astype(np.intp)
+            self._src_rows = np.minimum(rows, h - 1)
+            self._src_cols = np.minimum(cols, w - 1)
+            self._map_for_shape = (h, w)
+
+        self._resize_buf[:] = frame[self._src_rows[:, None], self._src_cols]
+        self._resize_buf /= 255.0
+
+        oh, ow = self._off_h, self._off_w
+        self._pad_buf[oh:oh + self.target_h, ow:ow + self.target_w] = self._resize_buf
+        return self._pad_buf
+
+
 # ---------------------------------------------------------------------------
 # Pipeline factory — combines components at each optimization stage
 # ---------------------------------------------------------------------------
@@ -319,6 +349,13 @@ ROUNDS = [
             KalmanFixed, PostProcessorFixed, PreprocessorFixed
         ),
     },
+    {
+        "name": "Round 4: Vectorize the resize",
+        "description": "Gather with an index map instead of a Python pixel loop",
+        "pipeline": _make_pipeline_class(
+            KalmanFixed, PostProcessorFixed, PreprocessorVectorized
+        ),
+    },
 ]
 
 
@@ -377,8 +414,9 @@ def main():
         print(row)
 
     print()
-    print("Cumulative speedup shows diminishing returns as Amdahl's Law predicts.")
-    print("Inference (untouched) dominates total time, capping overall improvement.")
+    print("Rounds 1-3 each make their own stage faster and barely move TOTAL:")
+    print("preprocess is ~93% of the frame, so Amdahl caps them near 1.0x.")
+    print("Round 4 attacks that 93% and is the first round the total feels.")
 
 
 if __name__ == "__main__":

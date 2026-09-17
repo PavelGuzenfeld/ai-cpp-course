@@ -246,10 +246,15 @@ def extract_position(self, result_array):
 
 **Measured improvement:**
 ```
-postprocess (before):  ~100 μs/call
-postprocess (after):   ~5 μs/call
-speedup:               ~20x
+postprocess (before):  2.5 μs/call
+postprocess (after):   1.6 μs/call
+speedup:               1.6x
 ```
+
+`test_postprocessor_improvement` measures 2.3x on the component in isolation,
+where it runs 10 ms of back-to-back calls with no pipeline around it. In the
+pipeline the stage is 0.1% of a frame either way. Both numbers are real; only
+one of them is worth anything, and the Amdahl section below says which.
 
 ### When copies are actually necessary
 
@@ -290,13 +295,37 @@ def preprocess(self, frame):
 
 **Measured improvement:**
 ```
-preprocess (before):  ~150 μs/call
-preprocess (after):   ~80 μs/call
-speedup:              ~1.9x
+preprocess (before):  2104 μs/call
+preprocess (after):   2104 μs/call
+speedup:              1.00x
 ```
 
-The speedup is smaller here because the actual computation (interpolation,
-padding) dominates. But every microsecond counts in a tight loop.
+None. Two `np.zeros` of 12 KB and 19 KB are a few microseconds against a stage
+that costs two milliseconds. The `# ... fill resized ...` the snippet skips over
+is a Python loop running `target_h * target_w` = 4096 times per frame, and that
+is the entire cost. Round 4 optimized the line it could see.
+
+### Round 4, second pass: the loop was the cost
+
+Nearest-neighbour resize picks one source pixel per destination pixel, and the
+source indices depend only on the input shape — not on the frame. So compute
+them once and let NumPy do the gather:
+
+```python
+rows = (np.arange(target_h) * (h / target_h)).astype(np.intp)
+cols = (np.arange(target_w) * (w / target_w)).astype(np.intp)
+self._resize_buf[:] = frame[np.minimum(rows, h - 1)[:, None], np.minimum(cols, w - 1)]
+```
+
+`.astype(np.intp)` truncates toward zero, which is what `int(row * scale)` did,
+so the output is bit-identical — `test_preprocess_matches` asserts
+`assert_array_equal`, not `assert_allclose`, because that is the actual claim.
+
+```
+preprocess (loop):    2104 μs/call
+preprocess (gather):    63 μs/call
+speedup:             33.2x
+```
 
 ## Round 5: torch.inference_mode vs torch.no_grad
 
@@ -327,23 +356,26 @@ architecture and batch size.
 
 ## Amdahl's Law in Practice
 
-After four rounds of optimization, here's our cumulative improvement:
+Rounds 1–4 as they were originally written — pre-allocate the Kalman matrices,
+drop the postprocessor's copy chain, pre-allocate the preprocess buffers —
+measured like this on an x86-64 laptop, 100 frames at 120×160, median per stage:
 
 ```
-Stage           Before    After     Speedup
+Stage           Before    After     Speedup   Share of "before"
+─────────────── ───────── ───────── ───────   ─────────────────
+preprocess      2127 μs   2127 μs   1.00x     93%
+inference        109 μs    107 μs   1.02x      5%
+kalman            45 μs     35 μs   1.30x      2%
+postprocess        3 μs      2 μs   1.80x      0%
 ─────────────── ───────── ───────── ───────
-preprocess      150 μs    80 μs     1.9x
-inference       800 μs    800 μs    1.0x  (untouched)
-kalman          250 μs    45 μs     5.5x
-postprocess     100 μs    5 μs      20x
-─────────────── ───────── ───────── ───────
-TOTAL           1,300 μs  930 μs    1.4x
+TOTAL           2284 μs   2271 μs   1.01x
 ```
 
-We achieved a 20x speedup on postprocessing — but the overall pipeline is only
-1.4x faster. Why?
+Every component that was optimized got faster. The pipeline did not. Over 100
+replays the end-to-end ratio had a median of **1.008** — measurement noise
+around no change at all.
 
-**Amdahl's Law:** The maximum speedup of a system is limited by the fraction
+**Amdahl's Law:** the maximum speedup of a system is limited by the fraction
 that *cannot* be improved.
 
 ```
@@ -356,17 +388,36 @@ Where:
   s = speedup of that part
 ```
 
-Inference takes 800 μs out of 1,300 μs — that's 61.5% of total time. Even if
-we made everything else infinitely fast, the maximum possible speedup would be:
+Kalman and postprocess are 48 μs out of 2284 — p = 0.021. Make them infinitely
+fast, s → ∞, and the ceiling is `1 / (1 - 0.021)` = **1.02x**. The rounds landed
+at 1.01x. They were never going to do better; the work was correct and the
+target was wrong.
+
+The 93% was in plain sight the whole time. `Preprocessor.preprocess` runs a
+Python loop `target_h * target_w` times per frame — 4096 interpreter iterations
+for a 64×64 output — and Round 4 optimized the two `np.zeros` next to it.
+Replace the loop with a gather and the same table reads:
 
 ```
-1 / 0.615 = 1.63x
+Stage           Before    After     Speedup
+─────────────── ───────── ───────── ───────
+preprocess      2127 μs     66 μs   32.2x
+inference        109 μs    107 μs    1.02x  (untouched)
+kalman            45 μs     35 μs    1.30x
+postprocess        3 μs      2 μs    1.80x
+─────────────── ───────── ───────── ───────
+TOTAL           2284 μs    209 μs   10.9x
 ```
 
-This is the most important lesson: **know when to stop optimizing the easy parts
-and start working on the dominant cost**. In a real tracker, the next step would
-be optimizing the neural network inference itself (quantization, TensorRT,
-pruning) — which is a different class of optimization entirely.
+End to end, over 30 replays: median ratio 0.091 (**11.0x**), worst 0.116
+(8.6x). The rounds that measured 1.01x and the round that measured 10.9x are
+the same amount of engineering effort.
+
+Now inference is 51% of the frame and it is the thing to attack next —
+quantization, TensorRT, pruning — which is a different class of optimization
+entirely. That is the point: **Amdahl tells you what to work on next, and it
+changes every time you land something.** Re-profile after every round, because
+the answer it gave you last round is now stale.
 
 ### The diminishing returns curve
 
@@ -386,9 +437,16 @@ Speedup
   └────────────────────────────────────────────>
 ```
 
-Each successive optimization yields less overall improvement. The first fix
-(Kalman) saved 205 μs. The second (copy chain) saved 95 μs. The third
-(buffers) saved 70 μs. The curve is flattening.
+That is the curve you get once you are working on the dominant cost. It is not
+the curve this pipeline drew. Measured, the first three fixes saved 10 μs, 1 μs
+and 0 μs out of 2284, and the fourth saved 2061. There was no flattening curve
+to ride — there was one stage worth 93% and three worth 2%, and the order the
+rounds happened to run in had nothing to do with which was which.
+
+Diminishing returns are real, but they arrive *after* you have taken the
+dominant cost. Before that, a flat curve means you are optimizing the wrong
+thing, not that you are running out of room. `optimization_rounds.py` prints
+the whole table; run it and read the TOTAL column, not the per-stage one.
 
 ## Common Pitfalls
 
@@ -561,9 +619,13 @@ fit doesn't need an accuracy comparison to be disqualified.
 - Pre-allocation eliminates per-frame allocation overhead
 - Copy chains are a common source of waste — extract values directly
 - `torch.inference_mode` is strictly better than `torch.no_grad` for inference
-- Amdahl's Law sets an upper bound on optimization gains
+- Amdahl's Law sets an upper bound on optimization gains — compute it *before*
+  optimizing, and re-profile after every round, because it moves
+- A component speedup that does not show up end to end means you optimized
+  something that was not the cost, not that the benchmark is broken
 - Always profile first, always measure after
-- Know when to stop: diminishing returns are real
+- Know when to stop: diminishing returns are real, but a flat curve before you
+  have taken the dominant cost means you are working on the wrong stage
 - A tuned classical baseline beats an untuned learned one — baseline properly before reaching for a model
 - RMSE cannot tell a well-calibrated filter from an overconfident one; ANEES and coverage can
 - A missing uncertainty output can be structural, not an oversight — check the measurement/state dimension ratio before assuming it's fixable
