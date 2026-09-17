@@ -33,26 +33,6 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y \
     && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60 \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 60
 
-RUN wget http://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.gz \
-    && tar -xf gcc-14.2.0.tar.gz \
-    && cd gcc-14.2.0 \
-    && ARCH=$(uname -m) \
-    && ./configure -v \
-    --build=${ARCH}-linux-gnu \
-    --host=${ARCH}-linux-gnu \
-    --target=${ARCH}-linux-gnu \
-    --prefix=/usr/ \
-    --enable-checking=release \
-    --enable-languages=c,c++ \
-    --disable-multilib \
-    --program-suffix=-14.2.0 \
-    && make -j2 \
-    # -j2, not $(nproc): libgcc's _BitInt soft-fp files reproducibly hang CI's
-    # 4-core runner under full parallelism, apparently from memory pressure.
-    && make install \
-    && cd .. \
-    && rm -rf gcc-14.2.0 gcc-14.2.0.tar.gz
-
 RUN git clone https://github.com/rui314/mold.git \
     && cd mold \
     && cmake -Bbuild -DCMAKE_BUILD_TYPE=Release \

@@ -194,7 +194,7 @@ class TestPreprocessorCorrectness:
         result_b = baseline.preprocess(frame)
         result_o = optimized.preprocess(frame)
 
-        np.testing.assert_allclose(result_b, result_o, atol=1e-6)
+        np.testing.assert_array_equal(result_b, result_o)
 
     def test_preprocess_multiple_frames(self):
         """Multiple frames all match (tests buffer reuse correctness)."""
@@ -208,8 +208,8 @@ class TestPreprocessorCorrectness:
             # Must copy because optimized returns a view of internal buffer
             result_o = optimized.preprocess(frame).copy()
 
-            np.testing.assert_allclose(
-                result_b, result_o, atol=1e-6,
+            np.testing.assert_array_equal(
+                result_b, result_o,
                 err_msg=f"Mismatch at frame seed={seed}"
             )
 
@@ -284,20 +284,23 @@ class TestTimingImprovement:
 
         Fresh pipeline per trial: they accumulate result history.
         """
+        # Generated outside the timed region. It is identical work in both
+        # arms, so it only ever compresses the ratio towards 1.
+        warmup_frames = [generate_test_frame(height=120, width=160, seed=i)
+                         for i in range(10)]
+        frames = [generate_test_frame(height=120, width=160, seed=i + 10)
+                  for i in range(num_frames)]
+
         times = []
         for _ in range(trials):
             np.random.seed(42)
             pipeline = pipeline_class()
 
-            # Warmup
-            for i in range(10):
-                frame = generate_test_frame(height=120, width=160, seed=i)
+            for frame in warmup_frames:
                 pipeline.process_frame(frame)
 
-            # Measure
             t0 = time.perf_counter_ns()
-            for i in range(num_frames):
-                frame = generate_test_frame(height=120, width=160, seed=i + 10)
+            for frame in frames:
                 pipeline.process_frame(frame)
             times.append(time.perf_counter_ns() - t0)
 
