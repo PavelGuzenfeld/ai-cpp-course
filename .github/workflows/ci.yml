@@ -131,11 +131,29 @@ jobs:
         if: always()
         run: sudo chown -R $(id -u):$(id -g) /tmp/ccache
 
+      # vivid is a synthetic V4L2 driver in the kernel's extra modules: it gives
+      # a /dev/video* node that speaks the real ioctls, so L14's real-device path
+      # runs here instead of skipping on every machine the course has (#88).
+      - name: Load the vivid virtual V4L2 driver
+        id: vivid
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y "linux-modules-extra-$(uname -r)"
+          sudo modprobe vivid n_devs=1 node_types=0x1
+          ls -l /dev/video0
+
+      - name: Say so when L14's real path will skip
+        if: steps.vivid.outcome != 'success'
+        run: echo "::warning title=vivid not loaded::L14 TestRealDevice and the [real-v4l2] contract params will SKIP"
+
       # --reruns 2 absorbs the L10 timing flake (#86); -rR names whichever
       # test a rerun absorbed, since the summary otherwise says only "1 rerun".
+      # -rs names every skip, so a lesson that stops running says so in the log.
       - name: Run compiled-module tests inside Docker
         run: |
-          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+          VIDEO_DEVICE=""
+          if [ -e /dev/video0 ]; then VIDEO_DEVICE="--device /dev/video0"; fi
+          docker run --rm $VIDEO_DEVICE -v $(pwd):/workspace ai-cpp-course:ci \
             bash -c "cd /workspace && pip3 install pytest -q && \
               source install/setup.bash && \
               failed=''; \
@@ -146,7 +164,7 @@ jobs:
                   ai-cpp-l19) continue;; \
                 esac; \
                 echo \"--- \$l ---\"; \
-                PYTHONPATH=\$l:\$PYTHONPATH pytest \$l/ -q --tb=line --reruns 2 -rR || failed=\"\$failed \$l\"; \
+                PYTHONPATH=\$l:\$PYTHONPATH pytest \$l/ -q --tb=line --reruns 2 -rRs || failed=\"\$failed \$l\"; \
               done; \
               if [ -n \"\$failed\" ]; then echo \"FAILED lessons:\$failed\"; exit 1; fi"
 
