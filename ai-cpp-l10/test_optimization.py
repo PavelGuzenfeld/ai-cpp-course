@@ -279,31 +279,37 @@ class TestTimingImprovement:
     make things worse, not that it achieved a specific speedup.
     """
 
-    def _run_timed(self, pipeline_class, num_frames=100):
-        """Run pipeline and return total time in ns."""
-        np.random.seed(42)
-        pipeline = pipeline_class()
+    def _run_timed(self, pipeline_class, num_frames=100, trials=5):
+        """Median of `trials` timed runs, in ns.
 
-        # Warmup
-        for i in range(10):
-            frame = generate_test_frame(height=120, width=160, seed=i)
-            pipeline.process_frame(frame)
+        Fresh pipeline per trial: they accumulate result history.
+        """
+        times = []
+        for _ in range(trials):
+            np.random.seed(42)
+            pipeline = pipeline_class()
 
-        # Measure
-        t0 = time.perf_counter_ns()
-        for i in range(num_frames):
-            frame = generate_test_frame(height=120, width=160, seed=i + 10)
-            pipeline.process_frame(frame)
-        t1 = time.perf_counter_ns()
+            # Warmup
+            for i in range(10):
+                frame = generate_test_frame(height=120, width=160, seed=i)
+                pipeline.process_frame(frame)
 
-        return t1 - t0
+            # Measure
+            t0 = time.perf_counter_ns()
+            for i in range(num_frames):
+                frame = generate_test_frame(height=120, width=160, seed=i + 10)
+                pipeline.process_frame(frame)
+            times.append(time.perf_counter_ns() - t0)
+
+        return float(np.median(times))
 
     def test_optimized_not_slower(self):
         """Optimized pipeline should not be significantly slower."""
         baseline_time = self._run_timed(Pipeline)
         optimized_time = self._run_timed(PipelineOptimized)
 
-        # Allow 20% tolerance — optimized should not be >1.2x slower
+        # 1.2 unchanged; the 5 trials are what make it safe. 100 replays:
+        # median ratio 1.008, max 1.097 over 5 trials vs 1.432 over one.
         assert optimized_time < baseline_time * 1.2, (
             f"Optimized ({optimized_time / 1e6:.1f} ms) is slower than "
             f"baseline ({baseline_time / 1e6:.1f} ms)"
@@ -344,19 +350,23 @@ class TestTimingImprovement:
         n = 10000
         state = np.array([[100.0, 200.0, 50.0, 60.0]], dtype=np.float64)
 
-        baseline = PostProcessor()
-        t0 = time.perf_counter_ns()
-        for _ in range(n):
-            baseline.format_result(state)
-        baseline_time = time.perf_counter_ns() - t0
+        def timed(cls, trials=5):
+            times = []
+            for _ in range(trials):
+                instance = cls()
+                for _ in range(1000):
+                    instance.format_result(state)
+                t0 = time.perf_counter_ns()
+                for _ in range(n):
+                    instance.format_result(state)
+                times.append(time.perf_counter_ns() - t0)
+            return float(np.median(times))
 
-        optimized = PostProcessorOptimized()
-        t0 = time.perf_counter_ns()
-        for _ in range(n):
-            optimized.format_result(state)
-        optimized_time = time.perf_counter_ns() - t0
+        baseline_time = timed(PostProcessor)
+        optimized_time = timed(PostProcessorOptimized)
 
-        # Optimized should not be slower
+        # 1.3 unchanged. This times 10 ms of work, so one scheduling outlier
+        # reached 1.529 once in 100 sweeps (#86); a median of 5 discards it.
         assert optimized_time < baseline_time * 1.3, (
             f"PostProcessor optimized ({optimized_time / 1e6:.1f} ms) is slower than "
             f"baseline ({baseline_time / 1e6:.1f} ms)"

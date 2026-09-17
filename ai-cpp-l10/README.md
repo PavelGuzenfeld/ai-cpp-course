@@ -105,6 +105,29 @@ Key rules:
 4. **Measure the same workload** before and after. Changing inputs invalidates
    comparison.
 
+This lesson broke its own rule 3 and paid for it. `TestTimingImprovement`
+compared one timed run of the baseline against one of the optimized path, and
+CI hid the result behind `--reruns 2`. Replaying the sweep sequence 100 times
+reproduced it once: `test_optimized_not_slower` at ratio 1.224 against its 1.2
+bound, `test_postprocessor_improvement` at 1.529 against 1.3.
+
+The measured distributions say those are two different problems with one
+shape. Over 100 replays, the pipeline ratio has a median of 1.008 — the
+optimized pipeline is not actually faster end to end — so a 1.2 bound leaves
+19% of headroom, and a single sample reached 1.432. The postprocessor has a
+median of 0.433 and 2x headroom, but it times 10 ms of work, and one
+scheduling outlier was enough.
+
+Taking the median of five runs per side fixes both without moving either
+bound: worst case over 100 replays drops from 1.432 to 1.097 for the pipeline
+and from 0.633 to 0.457 for the postprocessor. Widening the number instead
+would have hidden the fact that the end-to-end pipeline optimization does not
+actually pay on this machine.
+
+`test_kalman_improvement` was measured too and left alone — 1.74x headroom,
+flat across trial counts. Measure before you change it applies to test code as
+much as to the code under it.
+
 ## Round 1: Profile the Baseline
 
 Start by timing every stage of the pipeline:
