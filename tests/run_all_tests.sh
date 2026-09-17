@@ -74,6 +74,9 @@ run_test "L7 GPU" \
 run_test "L8 Compile-Time Concepts" \
     "pytest $PROJECT_ROOT/ai-cpp-l8/ -v"
 
+run_test "L14 Mocking a Vendor C API" \
+    "pytest $PROJECT_ROOT/ai-cpp-l14/ -v"
+
 run_test "L18 Golden Oracles and Sanitizers" \
     "pytest $PROJECT_ROOT/ai-cpp-l18/ -v"
 
