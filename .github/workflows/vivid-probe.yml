@@ -1,0 +1,32 @@
+name: vivid probe
+
+on:
+  push:
+    branches: [ci/l14-vivid-in-ci]
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: What kernel, and is vivid there
+        run: |
+          uname -r
+          echo "--- modinfo ---"
+          modinfo vivid || echo "modinfo: NOT PRESENT"
+          echo "--- extra package ---"
+          dpkg -l | grep -c "linux-modules-extra-$(uname -r)" || echo "extra: not installed"
+          apt-cache policy "linux-modules-extra-$(uname -r)" || true
+
+      - name: Try to load it
+        run: |
+          sudo modprobe vivid n_devs=1 node_types=0x1 && echo "modprobe: OK" || echo "modprobe: FAILED rc=$?"
+          ls -la /dev/video* || echo "no /dev/video*"
+
+      - name: What the node reports
+        run: |
+          sudo apt-get install -y v4l-utils >/dev/null 2>&1 || true
+          for n in /dev/video*; do v4l2-ctl -d $n --all 2>&1 | head -25; done || true
+
+      - name: Can a container see it
+        run: |
+          docker run --rm --device /dev/video0 ubuntu:22.04 ls -la /dev/video0 || echo "container: no device"
