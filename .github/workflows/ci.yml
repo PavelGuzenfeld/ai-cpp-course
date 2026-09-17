@@ -109,6 +109,8 @@ jobs:
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
             bash -c "cd /workspace && colcon build"
 
+      # --reruns 2 absorbs the L10 timing flake (#86); -rR names whichever
+      # test a rerun absorbed, since the summary otherwise says only "1 rerun".
       - name: Run compiled-module tests inside Docker
         run: |
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
@@ -122,7 +124,7 @@ jobs:
                   ai-cpp-l19) continue;; \
                 esac; \
                 echo \"--- \$l ---\"; \
-                PYTHONPATH=\$l:\$PYTHONPATH pytest \$l/ -q --tb=line --reruns 2 || failed=\"\$failed \$l\"; \
+                PYTHONPATH=\$l:\$PYTHONPATH pytest \$l/ -q --tb=line --reruns 2 -rR || failed=\"\$failed \$l\"; \
               done; \
               if [ -n \"\$failed\" ]; then echo \"FAILED lessons:\$failed\"; exit 1; fi"
 
