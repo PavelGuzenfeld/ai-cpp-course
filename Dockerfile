@@ -40,7 +40,11 @@ RUN git clone https://github.com/rui314/mold.git \
     && cd .. \
     && rm -rf mold
 
-RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+# -O a file, not a pipe: sh has no pipefail, so `wget | tee` reported tee's
+# status and a dropped fetch surfaced as an unsigned-repo error four commands on.
+RUN wget -q --tries=3 --retry-connrefused -O /etc/apt/trusted.gpg.d/apt.llvm.org.asc \
+      https://apt.llvm.org/llvm-snapshot.gpg.key \
+    && gpg --show-keys /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null \
     && echo "deb https://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main" > /etc/apt/sources.list.d/llvm.list \
     # llvm.sh's own distro-version check rejects point releases like
     # 22.04.5 that postdate the script; add the known-good jammy repo directly.
