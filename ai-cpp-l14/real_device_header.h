@@ -1,8 +1,11 @@
 #pragma once
-// Stands in for a vendor-shipped hardware SDK header -- the kind you get as
-// a .h file with no source, whose struct layout you do not control and
-// cannot change. This lesson's whole point is testing code written against
-// this header without the hardware it describes.
+// The vendor-style API this lesson mocks: a .h with a fixed struct layout you
+// do not control, and three C entry points. real_device_v4l2.cpp implements
+// it against a /dev/video* node, so "the real path" is a device that can
+// actually exist rather than a hypothetical.
+//
+// The layout is still the constraint the mock must match exactly -- see the
+// static_asserts in mock_device_header.h.
 #include <cstdint>
 
 struct DeviceFrame

@@ -2,11 +2,15 @@
 Unit tests for Lesson 14: mocking a vendor C API.
 
 Tests:
-  - MockDevice produces deterministic, monotonically-timestamped frames
+  - Contract tests, run against BOTH the mock and the real V4L2 device
+  - Mock-only tests, which assert the mock's own synthetic fill pattern
   - The real-hardware path is skipped (not stubbed) on a box with no device
+
+The split between the first two is the lesson. A test that only passes
+against the mock is a test of the mock, not of the code under it.
 """
 
-import os
+import glob
 import sys
 
 import pytest
@@ -15,11 +19,59 @@ sys.path.insert(0, ".")
 
 from device_mock_native import MockDevice  # noqa: E402
 
-# A real build would check for the actual device node here (e.g.
-# /dev/video0). No such marker exists on x86 CI, so REAL_DEVICE_AVAILABLE
-# is always False in this environment -- the point of this lesson is that
-# the test below is *skipped*, not silently passed with a stub.
-REAL_DEVICE_AVAILABLE = os.path.exists("/dev/ai_cpp_l14_real_device")
+# The real path is V4L2 (see real_device_v4l2.cpp), so the marker is a node
+# that can actually exist. No camera on this box means these tests skip --
+# the lesson's rule is skip, never stub.
+REAL_DEVICE_PATH = next(iter(sorted(glob.glob("/dev/video*"))), None)
+REAL_DEVICE_AVAILABLE = REAL_DEVICE_PATH is not None
+
+
+def open_mock():
+    return MockDevice("mock://camera0")
+
+
+def open_real():
+    from device_real_native import RealDevice
+
+    return RealDevice(REAL_DEVICE_PATH)
+
+
+# Contract tests run against every implementation of the API. Adding an
+# implementation means adding it here, not writing a parallel test file.
+IMPLEMENTATIONS = [pytest.param(open_mock, id="mock")]
+if REAL_DEVICE_AVAILABLE:
+    IMPLEMENTATIONS.append(pytest.param(open_real, id="real-v4l2"))
+
+
+@pytest.mark.parametrize("open_device", IMPLEMENTATIONS)
+class TestTheContractBothImplementationsOwe:
+    """Everything asserted here is true of the API, not of one implementation.
+
+    A real camera will not be 64x48, so nothing in this class may name a
+    resolution or a pixel value.
+    """
+
+    def test_a_frame_reports_a_nonzero_resolution(self, open_device):
+        frame = open_device().read_frame()
+        assert frame.width > 0
+        assert frame.height > 0
+
+    def test_resolution_is_stable_across_frames(self, open_device):
+        device = open_device()
+        first, second = device.read_frame(), device.read_frame()
+        assert (first.width, first.height) == (second.width, second.height)
+
+    def test_timestamps_do_not_go_backwards(self, open_device):
+        device = open_device()
+        stamps = [device.read_frame().timestamp_ns for _ in range(3)]
+        assert stamps == sorted(stamps)
+
+    def test_frame_count_tracks_reads(self, open_device):
+        device = open_device()
+        assert device.frame_count == 0
+        device.read_frame()
+        device.read_frame()
+        assert device.frame_count == 2
 
 
 class TestMockDeviceFrames:
@@ -67,12 +119,52 @@ class TestMockDeviceFrames:
 
 @pytest.mark.skipif(
     not REAL_DEVICE_AVAILABLE,
-    reason="no real device node present -- this is a hardware-only test, "
-    "skipped rather than stubbed (see docs/extending.md's rule in the README)",
+    reason="no /dev/video* node present -- hardware-only, skipped rather "
+    "than stubbed (see the README's rule)",
 )
 class TestRealDevice:
     def test_real_device_matches_mock_frame_shape(self):
-        # Left intentionally unimplemented: this test exists to be filled
-        # in and run on Orin NX / JP6 where a real device node is present.
-        # Skipped everywhere else -- never faked green.
-        raise NotImplementedError("run on hardware with a real device node")
+        """The acceptance question: does the mock's *shape* hold on hardware?
+
+        Shape, not values. Both must report a resolution, a monotonic
+        timestamp and a per-frame-varying payload; only the mock may claim
+        64x48 and an arithmetic fill.
+        """
+        real = open_real()
+        mock = open_mock()
+        real_frame, mock_frame = real.read_frame(), mock.read_frame()
+
+        for frame in (real_frame, mock_frame):
+            assert frame.width > 0 and frame.height > 0
+            assert isinstance(frame.timestamp_ns, int)
+            assert isinstance(frame.data_checksum, int)
+
+    def test_the_real_device_payload_changes_between_frames(self):
+        # The mock guarantees this by construction. If a real capture returns
+        # a constant checksum the buffer is not being refilled, which is the
+        # bug a mock can never catch for you.
+        device = open_real()
+        checksums = {device.read_frame().data_checksum for _ in range(5)}
+        assert len(checksums) > 1
+
+
+class TestTheRealModuleWithoutRealHardware:
+    """Needs no camera, so it runs everywhere -- including CI.
+
+    Without this the real implementation's error path would be untested on
+    every machine that lacks a device, which is most of them.
+    """
+
+    def test_opening_a_nonexistent_node_raises_rather_than_returning_junk(self):
+        from device_real_native import RealDevice
+
+        with pytest.raises(RuntimeError):
+            RealDevice("/dev/video-does-not-exist")
+
+    def test_opening_a_node_that_is_not_a_capture_device_raises(self):
+        # /dev/null opens fine and then fails VIDIOC_QUERYCAP. Catches the
+        # implementation returning a handle for anything openable.
+        from device_real_native import RealDevice
+
+        with pytest.raises(RuntimeError):
+            RealDevice("/dev/null")
