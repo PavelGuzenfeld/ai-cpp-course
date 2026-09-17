@@ -4,7 +4,8 @@ Optimized tracker pipeline — all bottlenecks fixed.
 Changes from tracker_pipeline.py:
 1. KalmanFilter: pre-allocated Q matrix in __init__, no per-frame np.eye
 2. PostProcessor: direct array indexing, no copy chains
-3. Preprocessor: pre-allocated resize and pad buffers
+3. Preprocessor: pre-allocated buffers, and the resize is a gather, not a
+   Python loop -- that loop was 93% of the frame (see the README's Amdahl section)
 4. Pipeline: pre-allocated result dict, reused each frame
 
 Run standalone to see per-stage timing and comparison:
@@ -139,20 +140,28 @@ class PreprocessorOptimized:
         self._off_h = (pad_h - target_h) // 2
         self._off_w = (pad_w - target_w) // 2
 
+        self._map_for_shape = ()
+        self._src_rows = np.zeros(0, dtype=np.intp)
+        self._src_cols = np.zeros(0, dtype=np.intp)
+
+    def _index_map(self, h, w):
+        """Nearest-neighbour source indices, rebuilt only when the shape changes."""
+        if self._map_for_shape != (h, w):
+            rows = (np.arange(self.target_h) * (h / self.target_h)).astype(np.intp)
+            cols = (np.arange(self.target_w) * (w / self.target_w)).astype(np.intp)
+            self._src_rows = np.minimum(rows, h - 1)
+            self._src_cols = np.minimum(cols, w - 1)
+            self._map_for_shape = (h, w)
+        return self._src_rows, self._src_cols
+
     def preprocess(self, frame):
         """Resize and pad a frame — reuses pre-allocated buffers."""
         h, w = frame.shape[:2]
+        rows, cols = self._index_map(h, w)
 
-        # FIX: Clear and reuse instead of allocating
-        self._resize_buf[:] = 0
-
-        scale_h = h / self.target_h
-        scale_w = w / self.target_w
-        for row in range(self.target_h):
-            src_row = min(int(row * scale_h), h - 1)
-            for col in range(self.target_w):
-                src_col = min(int(col * scale_w), w - 1)
-                self._resize_buf[row, col] = frame[src_row, src_col]
+        # FIX: one gather instead of target_h * target_w Python iterations.
+        # Truncating to intp is what int(row * scale) did, so output is identical.
+        self._resize_buf[:] = frame[rows[:, None], cols]
 
         # Normalize to [0, 1]
         self._resize_buf /= 255.0

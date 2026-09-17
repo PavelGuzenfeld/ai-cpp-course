@@ -194,7 +194,7 @@ class TestPreprocessorCorrectness:
         result_b = baseline.preprocess(frame)
         result_o = optimized.preprocess(frame)
 
-        np.testing.assert_allclose(result_b, result_o, atol=1e-6)
+        np.testing.assert_array_equal(result_b, result_o)
 
     def test_preprocess_multiple_frames(self):
         """Multiple frames all match (tests buffer reuse correctness)."""
@@ -208,8 +208,8 @@ class TestPreprocessorCorrectness:
             # Must copy because optimized returns a view of internal buffer
             result_o = optimized.preprocess(frame).copy()
 
-            np.testing.assert_allclose(
-                result_b, result_o, atol=1e-6,
+            np.testing.assert_array_equal(
+                result_b, result_o,
                 err_msg=f"Mismatch at frame seed={seed}"
             )
 
@@ -273,10 +273,9 @@ class TestPipelineCorrectness:
 # ---------------------------------------------------------------------------
 
 class TestTimingImprovement:
-    """Verify optimized version is not slower than baseline.
+    """Bounds derived from replayed measurements, not picked to pass.
 
-    Uses generous tolerance — we only check that optimization didn't
-    make things worse, not that it achieved a specific speedup.
+    Each bound's replay distribution is in the README.
     """
 
     def _run_timed(self, pipeline_class, num_frames=100, trials=5):
@@ -284,34 +283,36 @@ class TestTimingImprovement:
 
         Fresh pipeline per trial: they accumulate result history.
         """
+        # Generated outside the timed region. It is identical work in both
+        # arms, so it only ever compresses the ratio towards 1.
+        warmup_frames = [generate_test_frame(height=120, width=160, seed=i)
+                         for i in range(10)]
+        frames = [generate_test_frame(height=120, width=160, seed=i + 10)
+                  for i in range(num_frames)]
+
         times = []
         for _ in range(trials):
             np.random.seed(42)
             pipeline = pipeline_class()
 
-            # Warmup
-            for i in range(10):
-                frame = generate_test_frame(height=120, width=160, seed=i)
+            for frame in warmup_frames:
                 pipeline.process_frame(frame)
 
-            # Measure
             t0 = time.perf_counter_ns()
-            for i in range(num_frames):
-                frame = generate_test_frame(height=120, width=160, seed=i + 10)
+            for frame in frames:
                 pipeline.process_frame(frame)
             times.append(time.perf_counter_ns() - t0)
 
         return float(np.median(times))
 
-    def test_optimized_not_slower(self):
-        """Optimized pipeline should not be significantly slower."""
+    def test_optimized_pipeline_is_several_times_faster_end_to_end(self):
         baseline_time = self._run_timed(Pipeline)
         optimized_time = self._run_timed(PipelineOptimized)
 
-        # 1.2 unchanged; the 5 trials are what make it safe. 100 replays:
-        # median ratio 1.008, max 1.097 over 5 trials vs 1.432 over one.
-        assert optimized_time < baseline_time * 1.2, (
-            f"Optimized ({optimized_time / 1e6:.1f} ms) is slower than "
+        # 30 replays: median ratio 0.091, worst 0.116. 0.25 leaves 2.2x over
+        # the worst sample -- the old 1.2 bound had 1.09x over its own worst.
+        assert optimized_time < baseline_time * 0.25, (
+            f"Optimized ({optimized_time / 1e6:.1f} ms) is not 4x faster than "
             f"baseline ({baseline_time / 1e6:.1f} ms)"
         )
 
