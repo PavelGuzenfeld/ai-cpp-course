@@ -133,6 +133,16 @@ driver ever creates, so the test was unreachable on *every* machine including
 the hardware it named. A skip you can never turn into a run is a deleted test
 with extra steps.
 
+And a skip nobody turns into a run is the same thing more slowly. CI now
+`modprobe`s `vivid`, the kernel's virtual video test driver — it ships in
+`linux-modules-extra-$(uname -r)`, costs about 46 s to install on a GitHub
+runner, and gives a `/dev/video0` that answers `QUERYCAP`, `REQBUFS`, `QBUF`
+and `DQBUF` for real. The container gets it with `--device`. So the real path
+is exercised on every push instead of on whatever day someone next plugs a
+camera in. If the `modprobe` fails the job still runs and warns; `pytest -rs`
+names the skip in the log, because the quiet version of that is how the path
+went unexecuted for the whole life of the lesson.
+
 Note also `TestTheRealModuleWithoutRealHardware`, which is **not** skipped.
 Opening a nonexistent node, and opening `/dev/null` — which opens fine and
 then fails `VIDIOC_QUERYCAP` — both need to raise, and neither needs a
