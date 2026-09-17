@@ -168,6 +168,34 @@ jobs:
               done; \
               if [ -n \"\$failed\" ]; then echo \"FAILED lessons:\$failed\"; exit 1; fi"
 
+      # L12's exercise is that dirty_code fails clang-tidy and clean_code does
+      # not. Neither half was ever checked: clang-tidy was in no image, so the
+      # CMake toggle took its else branch and the lesson ran nowhere (#99).
+      - name: Run L12 clang-tidy lane
+        run: |
+          docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \
+            bash -c "cd /workspace && \
+              rm -rf build/ai-cpp-l12 install/ai-cpp-l12 && \
+              colcon build --packages-select ai-cpp-l12 --cmake-args -DENABLE_CLANG_TIDY=ON && \
+              cd ai-cpp-l12 && \
+              if clang-tidy-19 dirty_code.cpp -- -std=c++23 > /tmp/tidy.log 2>&1; then \
+                echo 'ERROR: dirty_code.cpp passed clang-tidy -- the exercise has no teeth'; \
+                exit 1; \
+              fi; \
+              n=\$(grep -c 'error:' /tmp/tidy.log); \
+              echo \"dirty_code.cpp rejected as expected, \$n errors\"; \
+              if [ \"\$n\" -ne 5 ]; then \
+                echo \"ERROR: expected the 5 documented violations, got \$n\"; exit 1; \
+              fi; \
+              for c in performance-unnecessary-value-param \
+                       performance-unnecessary-copy-initialization \
+                       performance-for-range-copy \
+                       performance-inefficient-vector-operation \
+                       modernize-use-emplace; do \
+                grep -q \"\$c\" /tmp/tidy.log || { echo \"ERROR: \$c did not fire\"; exit 1; }; \
+              done; \
+              echo 'all five documented checks fired'"
+
       - name: Run L2 stride ASan overrun demo (expected to abort)
         run: |
           docker run --rm -v $(pwd):/workspace ai-cpp-course:ci \

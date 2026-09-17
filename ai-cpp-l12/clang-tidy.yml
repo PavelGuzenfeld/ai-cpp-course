@@ -29,8 +29,9 @@ jobs:
             | grep -E '\.(cpp|h|hpp)$' \
             | tee changed.txt
           if [[ -s changed.txt ]]; then
-            xargs -r -a changed.txt \
-              clang-tidy-19 -p build --warnings-as-errors=*
+            # No --warnings-as-errors here: .clang-tidy's WarningsAsErrors is
+            # the policy, and the flag silently outranks it for every check.
+            xargs -r -a changed.txt clang-tidy-19 -p build
           else
             echo "No C++ files changed in this PR."
           fi

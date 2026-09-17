@@ -152,11 +152,19 @@ CMake then invokes `clang-tidy` as part of every `add_library` /
 violations. `clean_code.cpp` is the fixed version. Run:
 
 ```bash
-clang-tidy dirty_code.cpp -p build --warnings-as-errors=*
+clang-tidy dirty_code.cpp -- -std=c++23
 ```
 
-and watch the errors fire. Apply the fixes yourself, then compare against
+and watch five errors fire. Apply the fixes yourself, then compare against
 `clean_code.cpp`.
+
+No `--warnings-as-errors=*` on that line, and none in `CMAKE_CXX_CLANG_TIDY`
+either. `.clang-tidy`'s `WarningsAsErrors` already names which checks are
+errors; the flag overrides it and promotes everything, including a
+`readability-identifier-naming` complaint about `constexpr int N` in
+`polynomial_flags.cpp` that has nothing to do with this exercise. The config
+file is the policy. A flag that quietly outranks it is how you end up with a
+build that fails on a naming nit and a reviewer who turns the whole thing off.
 
 ### B.4 The GitHub Actions workflow
 

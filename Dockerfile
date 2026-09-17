@@ -49,7 +49,9 @@ RUN wget -q --tries=3 --retry-connrefused -O /etc/apt/trusted.gpg.d/apt.llvm.org
     # llvm.sh's own distro-version check rejects point releases like
     # 22.04.5 that postdate the script; add the known-good jammy repo directly.
     && apt-get update \
-    && apt-get install -y clang-19 \
+    # clang-tidy ships separately from clang; L12 is built around it. It pulls
+    # libclang-cpp19 and libllvm19, which clang-19 already brings: +55 MB.
+    && apt-get install -y clang-19 clang-tidy-19 \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100 \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100 \
     && rm -rf /var/lib/apt/lists/*

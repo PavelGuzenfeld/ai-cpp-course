@@ -1,7 +1,7 @@
 // dirty_code.cpp — deliberately contains 5 clang-tidy performance / modernize
 // violations.  Your exercise:
 //
-//   clang-tidy dirty_code.cpp --warnings-as-errors=*
+//   clang-tidy dirty_code.cpp -- -std=c++23
 //
 // Fix each warning in place and compare your result against clean_code.cpp.
 
